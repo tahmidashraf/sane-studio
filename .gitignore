@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+*.log
+# large generated test corpus: rebuild with `python tests/make_samples.py`
+tests/samples/

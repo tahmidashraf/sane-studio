@@ -1,0 +1,12 @@
+mne==1.12.1
+numpy==2.2.6
+scipy==1.15.3
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+pydantic==2.13.4
+edfio==0.4.18
+pybv==0.8.1
+eeglabio==0.1.4
+pymatreader==1.3.2
+h5py==3.16.0

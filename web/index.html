@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SANE Studio</title>
+<meta name="description" content="Upload EEG in EDF, BDF, BrainVision, EEGLAB or FIF. SANE neutralizes subject-level neurological biomarkers and returns the data in the same format.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b8f80'/%3E%3Cpath d='M5 17h4l2.5-7 4 13 3-9 2 3H27' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  try { const t = localStorage.getItem("sane-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="SANE Studio home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--out)"/><path d="M5 17h4l2.5-7 4 13 3-9 2 3H27" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b>SANE Studio</b><span>EEG biomarker neutralization</span>
+  </a>
+  <div class="spacer"></div>
+  <div class="session-chip" id="sessionChip" hidden><i></i><span id="sessionText"></span></div>
+  <button class="btn ghost sm" id="newSession" hidden>New session</button>
+  <button class="btn ghost icon" id="themeBtn" aria-label="Toggle colour theme" title="Toggle colour theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</header>
+
+<main>
+  <!-- ============================================================ UPLOAD -->
+  <section id="screenUpload">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Neural data, de-identified</div>
+        <h1>Remove the disease fingerprint from EEG. <em>Keep everything the study needs.</em></h1>
+        <p class="lede">SANE neutralizes subject-level spectral and spatial biomarkers, such as an elevated theta/beta ratio, while preserving trial-level brain dynamics, events and auxiliary channels. You get the data back in the same file format.</p>
+        <div class="drop" id="drop">
+          <svg class="drop-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 31V9m0 0-8 8m8-8 8 8"/><path d="M8 29v6a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-6"/></svg>
+          <h2>Drop EEG files or a whole folder</h2>
+          <p>Include companion files: BrainVision needs .vhdr + .vmrk + .eeg, and EEGLAB a .set with its .fdt.</p>
+          <div class="actions">
+            <button class="btn primary" id="pickFiles">Choose files</button>
+            <button class="btn" id="pickFolder">Choose folder</button>
+          </div>
+          <div class="formats" aria-label="Supported formats">
+            <span class="chip fmt">.edf</span><span class="chip fmt">.bdf</span><span class="chip fmt">.vhdr · .vmrk · .eeg</span>
+            <span class="chip fmt">.set · .fdt</span><span class="chip fmt">.fif</span>
+          </div>
+          <input type="file" id="fileInput" multiple hidden accept=".edf,.bdf,.vhdr,.vmrk,.eeg,.set,.fdt,.fif,.gz">
+          <input type="file" id="folderInput" webkitdirectory multiple hidden>
+        </div>
+        <div style="margin-top:22px">
+          <div class="label">No data at hand? Try a sample dataset</div>
+          <div class="samples" id="samples"></div>
+        </div>
+      </div>
+      <aside class="panel how">
+        <div class="panel-head"><h2>What happens to your data</h2></div>
+        <div class="panel-body">
+          <ol>
+            <li><span class="n">1</span><div><b>Read</b><span>Every recording is parsed with MNE-Python. Scalp EEG is separated from EOG, ECG, EMG and trigger channels, which pass through untouched.</span></div></li>
+            <li><span class="n">2</span><div><b>Neutralize</b><span>Each subject's band power is set to the reference, and the per-band spatial covariance is aligned with a minimal-distortion optimal-transport map.</span></div></li>
+            <li><span class="n">3</span><div><b>Return</b><span>Download the result as EDF, BDF, BrainVision, EEGLAB or FIF, matching what you uploaded, with the same sampling rate, channels and events.</span></div></li>
+          </ol>
+          <div class="assure">
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6z"/></svg>Files live in an isolated session and are deleted automatically after 60 minutes.</div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg>Header identifiers such as name, birth date and measurement date can be stripped from the output.</div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>A privacy report measures what changed: biomarker deviation, spatial fingerprint and the Trait Leakage Index.</div>
+          </div>
+          <div class="keeps">
+            <div class="rm"><h4>Neutralized</h4><ul><li>Subject theta/beta and band profile</li><li>Spatial covariance fingerprint</li><li>Header identifiers (optional)</li></ul></div>
+            <div class="kp"><h4>Preserved</h4><ul><li>Trial-level dynamics and ERD</li><li>Events, EOG, ECG, triggers</li><li>Format, rate, channel layout</li></ul></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============================================================ CONFIGURE -->
+  <section id="screenConfig" hidden>
+    <div class="screen-title">
+      <div><h1>Review recordings</h1><p>Check what was detected, assign subjects, and set how strongly SANE neutralizes. Recordings of the same person should share a subject ID.</p></div>
+      <div class="spacer"></div>
+      <button class="btn" id="addMore">Add more files</button>
+    </div>
+    <div class="config">
+      <div class="panel">
+        <div class="panel-head"><h2 id="recCount">Recordings</h2><div class="spacer"></div><span class="faint" id="recTotals"></span></div>
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>File</th><th>Format</th><th class="num">EEG / all ch</th><th class="num">Rate</th><th class="num">Duration</th><th class="num">Events</th><th>Subject</th><th>Status</th></tr></thead>
+            <tbody id="recRows"></tbody>
+          </table>
+        </div>
+        <div class="panel-body" style="padding-top:0"><div class="notes" id="uploadNotes"></div></div>
+      </div>
+      <aside class="panel params">
+        <div class="panel-head"><h2>Neutralization</h2></div>
+        <div class="panel-body">
+          <div class="field">
+            <div class="alpha-row"><label for="alpha">Strength α</label><span class="alpha-val" id="alphaVal">1.00</span></div>
+            <input type="range" class="slider" id="alpha" min="0" max="1" step="0.05" value="1">
+            <div class="ticks"><span>0 · off</span><span>0.5</span><span>1 · full</span></div>
+            <div class="hint">At 1 the subject-level biomarker is fully set to the reference. Lower values interpolate along the minimal-distortion path.</div>
+          </div>
+          <div class="field">
+            <label>Reference</label>
+            <div class="seg" id="refSeg" role="group" aria-label="Reference">
+              <button data-v="auto" aria-pressed="true">Auto</button><button data-v="cohort" aria-pressed="false">Cohort</button><button data-v="normative" aria-pressed="false">Normative</button>
+            </div>
+            <div class="hint" id="refHint"></div>
+          </div>
+          <div class="field" id="spatialField">
+            <label>Normative spatial model</label>
+            <div class="seg" id="spatialSeg" role="group" aria-label="Spatial model">
+              <button data-v="kernel" aria-pressed="true">Head geometry</button><button data-v="identity" aria-pressed="false">Decorrelated</button>
+            </div>
+            <div class="hint">Used only when there is no cohort to align to. Head geometry models volume conduction from electrode positions.</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="oob" checked><span><b>Keep content outside 1–45 Hz</b><small>Slow drifts and high-frequency content pass through unchanged.</small></span></label>
+          <label class="switch"><input type="checkbox" id="anon" checked><span><b>Strip personal metadata</b><small>Removes name, birth date, IDs and the recording date from the file header.</small></span></label>
+          <button class="btn accent" id="runBtn" style="height:42px">Neutralize recordings</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ============================================================ PROCESSING -->
+  <section id="screenProc" hidden>
+    <div class="proc">
+      <div class="eyebrow">Processing</div>
+      <h1>Neutralizing subject biomarkers</h1>
+      <p>This usually takes a few seconds per recording. You can keep this tab open.</p>
+      <div class="bar"><i id="procBar"></i></div>
+      <div class="stage" id="procStage">Starting</div>
+      <div class="steps" id="procSteps"><span>Analyze</span><span>Reference</span><span>Neutralize</span><span>Write</span><span>Report</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ WORKSPACE -->
+  <section id="screenWork" hidden>
+    <div class="ws">
+      <aside class="rail">
+        <div class="panel">
+          <div class="panel-head"><h3>Recordings</h3><div class="spacer"></div><span class="faint mono" id="railCount"></span></div>
+          <div class="list" id="recList"></div>
+        </div>
+        <div class="panel dl">
+          <button class="btn accent" id="dlAll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>Download all (.zip)</button>
+          <button class="btn" id="reconfigure">Change settings</button>
+        </div>
+      </aside>
+
+      <div>
+        <div class="rec-head">
+          <div><h1 id="recTitle"></h1><div class="facts" id="recFacts"></div></div>
+          <div class="spacer"></div>
+          <button class="btn" id="dlOne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg><span id="dlOneLabel">Download</span></button>
+        </div>
+
+        <div class="kpis" id="kpis"></div>
+
+        <div class="panel viewer">
+          <div class="toolbar">
+            <div class="grp"><span>View</span>
+              <div class="seg" id="viewSeg"><button data-v="split" aria-pressed="true">Split</button><button data-v="overlay" aria-pressed="false">Overlay</button><button data-v="in" aria-pressed="false">Input</button><button data-v="out" aria-pressed="false">Output</button><button data-v="diff" aria-pressed="false">Difference</button></div>
+            </div>
+            <div class="grp"><span>Band</span>
+              <select class="input" id="bandSel" style="height:32px"><option value="broad">Broadband</option><option value="delta">δ 1–4 Hz</option><option value="theta">θ 4–8 Hz</option><option value="alpha">α 8–13 Hz</option><option value="beta">β 13–30 Hz</option><option value="gamma">γ 30–45 Hz</option></select>
+            </div>
+            <div class="grp"><span>Window</span>
+              <select class="input" id="winSel" style="height:32px"><option>2</option><option>5</option><option selected>10</option><option>20</option><option>30</option><option>60</option></select>
+            </div>
+            <div class="grp"><span>Channels</span>
+              <select class="input" id="chSel" style="height:32px"></select>
+            </div>
+            <div class="grp"><span>Scale</span>
+              <button class="btn icon sm" id="scaleDown" aria-label="Decrease amplitude">−</button>
+              <span class="mono" id="scaleVal" style="min-width:66px;text-align:center"></span>
+              <button class="btn icon sm" id="scaleUp" aria-label="Increase amplitude">+</button>
+            </div>
+            <label class="switch" style="align-items:center"><input type="checkbox" id="auxToggle" checked><span><b style="font-size:13px">Aux</b></span></label>
+            <label class="switch" style="align-items:center"><input type="checkbox" id="evToggle" checked><span><b style="font-size:13px">Events</b></span></label>
+          </div>
+          <div class="plots" id="plots">
+            <div class="plot" id="plotIn"><span class="cap chip in">INPUT</span><canvas id="cvIn"></canvas></div>
+            <div class="plot" id="plotOut"><span class="cap chip out">SANE OUTPUT</span><canvas id="cvOut"></canvas></div>
+            <div class="readout" id="readout" hidden></div>
+          </div>
+          <div class="timeline">
+            <canvas id="cvTimeline"></canvas>
+            <div class="nav">
+              <button class="btn icon sm" id="prevWin" aria-label="Previous window">‹</button>
+              <button class="btn icon sm" id="nextWin" aria-label="Next window">›</button>
+              <span id="winLabel"></span>
+              <div class="spacer"></div>
+              <div class="legend"><span><i style="background:var(--in)"></i>input</span><span><i style="background:var(--out)"></i>SANE output</span><span><i style="background:var(--bio)"></i>events</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:14px">
+          <div class="tabs" role="tablist" id="tabs">
+            <button role="tab" data-t="spectrum" aria-selected="true">Spectrum</button>
+            <button role="tab" data-t="bands" aria-selected="false">Band power</button>
+            <button role="tab" data-t="topo" aria-selected="false">Topography</button>
+            <button role="tab" data-t="spatial" aria-selected="false">Spatial fingerprint</button>
+            <button role="tab" data-t="report" aria-selected="false">Privacy report</button>
+          </div>
+          <div class="tab-body" id="tab-spectrum">
+            <div class="two-col">
+              <div><div class="chart"><canvas id="cvPsd"></canvas></div>
+                <div class="subtle-note" id="psdNote"></div></div>
+              <div><div class="label" style="margin-bottom:8px">Channel</div>
+                <select class="input" id="psdChan" style="width:100%"></select>
+                <div class="report-grid" style="margin-top:14px;grid-template-columns:1fr" id="psdStats"></div></div>
+            </div>
+          </div>
+          <div class="tab-body" id="tab-bands" hidden>
+            <div class="two-col">
+              <div class="chart"><canvas id="cvBands"></canvas></div>
+              <div><div class="label" style="margin-bottom:8px">Per-channel θ/β deviation from reference (log)</div><div class="chart"><canvas id="cvTb"></canvas></div>
+                <div class="subtle-note">Each pair of bars is one EEG channel: input in amber, SANE output in teal. Output deviations collapse onto zero, the reference line.</div></div>
+            </div>
+          </div>
+          <div class="tab-body" id="tab-topo" hidden>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+              <span class="label">Map</span>
+              <select class="input" id="topoSel"><option value="tb">theta/beta ratio (log)</option><option value="delta">relative δ power</option><option value="theta">relative θ power</option><option value="alpha">relative α power</option><option value="beta">relative β power</option><option value="gamma">relative γ power</option></select>
+            </div>
+            <div class="three" id="topoMaps">
+              <figure><figcaption><span>Input</span></figcaption><div class="chart"><canvas id="cvTopoIn"></canvas></div></figure>
+              <figure><figcaption><span>SANE output</span></figcaption><div class="chart"><canvas id="cvTopoOut"></canvas></div></figure>
+              <figure><figcaption><span>Reference</span></figcaption><div class="chart"><canvas id="cvTopoRef"></canvas></div></figure>
+            </div>
+            <div class="colorbar" id="topoBar"></div>
+            <div class="subtle-note" id="topoNote"></div>
+          </div>
+          <div class="tab-body" id="tab-spatial" hidden>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+              <span class="label">Band</span><div class="seg" id="spBandSeg"></div>
+            </div>
+            <div class="three">
+              <figure><figcaption><span>Input correlation</span><span class="mono" id="spDistIn"></span></figcaption><div class="chart"><canvas id="cvSpIn"></canvas></div></figure>
+              <figure><figcaption><span>SANE output</span><span class="mono" id="spDistOut"></span></figcaption><div class="chart"><canvas id="cvSpOut"></canvas></div></figure>
+              <figure><figcaption><span>Reference</span></figcaption><div class="chart"><canvas id="cvSpRef"></canvas></div></figure>
+            </div>
+            <div class="colorbar"><span>−1</span><i style="background:linear-gradient(90deg,#3b6fd1,#f4f6fa 50%,#d1443b)"></i><span>+1</span></div>
+            <div class="subtle-note">Channel-by-channel correlation in the selected band. The spatial fingerprint is how far the input differs from the reference; SANE moves the output onto it.</div>
+          </div>
+          <div class="tab-body" id="tab-report" hidden><div id="reportBody"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site">
+  <span>SANE Studio · Spectral Attribute Neutralization for EEG</span>
+  <span>SANE neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool.</span>
+</footer>
+<div class="toast" id="toast" hidden></div>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
