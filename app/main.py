@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from .formats import safe_name
 from .jobs import MAX_UPLOAD_BYTES, Store
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +49,7 @@ class RunParams(BaseModel):
     alpha: float = Field(1.0, ge=0.0, le=1.0)
     reference: Literal["auto", "cohort", "normative"] = "auto"
     spatial_model: Literal["kernel", "identity"] = "kernel"
+    spatial_alpha: float | None = Field(None, ge=0.0, le=1.0)
     preserve_oob: bool = True
     anonymize: bool = True
     subjects: dict[str, str] = {}
@@ -69,8 +71,7 @@ def _rec(job, rid, need_done=True):
 
 
 def _safe_name(name: str) -> str:
-    name = Path(name.replace("\\", "/")).name
-    name = re.sub(r"[^A-Za-z0-9._ \-()+]", "_", name).strip()
+    name = safe_name(name)
     if not name or name.startswith("."):
         raise HTTPException(400, f"Invalid file name: {name!r}")
     return name

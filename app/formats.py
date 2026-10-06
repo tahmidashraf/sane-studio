@@ -49,14 +49,38 @@ def _ext(path: Path) -> str:
     return ".gz" if n.endswith(".fif.gz") else path.suffix.lower()
 
 
+def safe_name(name: str) -> str:
+    """File name as stored on the server: no directories, conservative characters."""
+    name = Path(str(name).replace("\\", "/")).name
+    return re.sub(r"[^A-Za-z0-9._ \-()+]", "_", name).strip()
+
+
+def _read_text(path: Path) -> str:
+    raw = path.read_bytes()
+    for enc in ("utf-8", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("latin-1", errors="ignore")
+
+
 def _vhdr_refs(vhdr: Path):
     """DataFile and MarkerFile names referenced inside a BrainVision header."""
     refs = {}
-    for line in vhdr.read_text(errors="ignore").splitlines():
+    for line in _read_text(vhdr).splitlines():
         m = re.match(r"\s*(DataFile|MarkerFile)\s*=\s*(.+?)\s*$", line, re.I)
         if m:
             refs[m.group(1).lower()] = m.group(2)
     return refs
+
+
+def _repoint_vhdr(vhdr: Path, kind: str, new_name: str):
+    """Rewrite a DataFile/MarkerFile reference so MNE finds the uploaded companion."""
+    key = "DataFile" if kind == "datafile" else "MarkerFile"
+    text = _read_text(vhdr)
+    text = re.sub(rf"(?im)^(\s*{key}\s*=).*$", lambda m: m.group(1) + new_name, text)
+    vhdr.write_text(text, encoding="utf-8")
 
 
 def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
@@ -72,16 +96,21 @@ def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
         claimed.add(h.name.lower())
         if fmt == "brainvision":
             refs = _vhdr_refs(h)
-            for kind in ("datafile", "markerfile"):
+            for kind, ext in (("datafile", ".eeg"), ("markerfile", ".vmrk")):
                 ref = refs.get(kind)
-                if not ref:
-                    continue
-                comp = by_lower.get(Path(ref).name.lower())
+                ref_name = Path(ref.replace("\\", "/")).name if ref else ""
+                # exact name, then the name as sanitized on upload, then a file
+                # renamed together with the header (same stem)
+                comp = (by_lower.get(ref_name.lower()) or by_lower.get(safe_name(ref_name).lower())
+                        or by_lower.get(f"{spec.base}{ext}".lower()))
                 if comp is None:
-                    spec.warnings.append(f"missing {Path(ref).name} referenced by {h.name}")
-                else:
-                    spec.companions.append(comp)
-                    claimed.add(comp.name.lower())
+                    if kind == "datafile":
+                        spec.warnings.append(f"missing the data file ({ref_name or spec.base + ext}) for {h.name}")
+                    continue
+                if comp.name != ref_name:
+                    _repoint_vhdr(h, kind, comp.name)
+                spec.companions.append(comp)
+                claimed.add(comp.name.lower())
         elif fmt == "eeglab":
             fdt = by_lower.get(f"{spec.base}.fdt".lower())
             if fdt is not None:
@@ -99,14 +128,23 @@ def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
 
 def read(spec: RecordingSpec, preload: bool = True):
     """Read a recording with MNE. Epoched files raise a clear error."""
+    if spec.header.stat().st_size < 2048 and spec.fmt in ("edf", "bdf", "fif"):
+        head = spec.header.read_bytes()[:200]
+        if b"annex/objects" in head or b"git-lfs" in head or b"version https://" in head:
+            raise ValueError("this is a placeholder from DataLad/git-annex or Git LFS, not the recording; "
+                             "fetch the real file first (e.g. `datalad get`)")
     try:
         return mne.io.read_raw(spec.header, preload=preload, verbose="ERROR")
     except Exception as exc:  # noqa: BLE001 - surface MNE's reason to the user
         msg = str(exc)
-        if "trials" in msg.lower() or "epoch" in msg.lower():
+        low = msg.lower()
+        if "trials" in low or "epoch" in low:
             raise ValueError("this file holds epoched data; upload the continuous recording") from exc
-        if "fdt" in msg.lower() or "no such file" in msg.lower():
-            raise ValueError(f"a companion file is missing ({msg})") from exc
+        if "fdt" in low or "no such file" in low or "does not exist" in low:
+            raise ValueError(f"a companion file is missing: {msg}") from exc
+        if "bad bdf" in low or "bad edf" in low or "header" in low:
+            raise ValueError(f"{spec.header.name} is not a valid {FORMAT_LABEL[spec.fmt]} file "
+                             "(the header could not be parsed; the file may be truncated or corrupted)") from exc
         raise ValueError(f"could not read {spec.header.name}: {msg}") from exc
 
 
@@ -167,7 +205,10 @@ def _montage_lookup(name):
 
 
 def _label_key(name):
-    return re.sub(r"^EEG", "", "".join(name.split()).upper()).split("-")[0]
+    """'EEG Fp1-REF' -> 'FP1'; PhysioNet's padded 'Fc5.' / 'Cz..' -> 'FC5' / 'CZ'."""
+    key = re.sub(r"^EEG", "", "".join(name.split()).upper())
+    key = re.split(r"[-/:]", key)[0]
+    return re.sub(r"[^A-Z0-9]", "", key)
 
 
 def electrode_positions(raw, picks):

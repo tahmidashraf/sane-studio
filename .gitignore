@@ -3,3 +3,4 @@ __pycache__/
 *.log
 # large generated test corpus: rebuild with `python tests/make_samples.py`
 tests/samples/
+tests/native_like/

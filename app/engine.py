@@ -226,13 +226,36 @@ def normative_kernel(pos, avg_ref):
 
 
 # ---------------------------------------------------------------- operators
-def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel"):
+def normative_spatial(S_b, pos, avg_ref, min_located=0.6):
+    """Normative correlation for one band, or None to keep the subject's own structure.
+
+    Located channels follow the head-geometry kernel; channels without a position
+    keep their own correlations with the rest (no position, no model to impose).
+    """
+    C = S_b.shape[0]
+    ok = np.all(np.isfinite(pos), axis=1) if pos is not None else np.zeros(C, bool)
+    if ok.sum() < max(4, min_located * C):
+        return None
+    K = corr_from_cov(S_b)
+    K[np.ix_(ok, ok)] = normative_kernel(pos[ok], False)
+    if avg_ref:
+        H = np.eye(C) - np.ones((C, C)) / C
+        K = H @ K @ H
+        K /= np.mean(np.diag(K))
+    return nearest_corr(K)
+
+
+def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel", spatial_alpha=None):
     """Per-unit band operators M (nb, C, C) and the reference used.
 
     units: list of dicts with keys key, subject, ch_names, P, R, weight, avg_ref, pos.
     reference: 'auto' | 'cohort' | 'normative'.
-    spatial_model (normative only): 'kernel' (needs positions) | 'identity'.
+    spatial_model (normative only): 'kernel' (head geometry where positions are
+      known, the subject's own structure elsewhere) | 'identity' (full whitening).
+    alpha sets spectral neutralization; spatial_alpha (default alpha) sets how far the
+    spatial covariance is moved, so channel-specific analyses can keep more of it.
     """
+    sa = alpha if spatial_alpha is None else float(spatial_alpha)
     nb = len(bands)
     names = [b[0] for b in bands]
     rel = np.array([NORMATIVE_REL[n] for n in names])
@@ -257,14 +280,21 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
             ptot = float(np.mean(u["P"].sum(1)))
             mu_u = np.tile(rel * ptot, (C, 1))                                       # (C, nb)
             pos = u.get("pos")
-            if spatial_model == "kernel" and pos is not None and np.all(np.isfinite(pos)):
-                K, smodel = normative_kernel(pos, u["avg_ref"]), "kernel"
-            else:
-                K, smodel = np.eye(C), "identity"
-                if u["avg_ref"]:
-                    K = np.eye(C) - np.ones((C, C)) / C
-                    K /= np.mean(np.diag(K))
-            Rref_u = np.stack([rel[b] * ptot * K for b in range(nb)])
+            Ks = []
+            for b in range(nb):
+                if spatial_model == "identity":
+                    K = np.eye(C)
+                    if u["avg_ref"]:
+                        K = np.eye(C) - np.ones((C, C)) / C
+                        K /= np.mean(np.diag(K))
+                else:
+                    K = normative_spatial(u["R"][b], pos, u["avg_ref"])
+                    if K is None:                       # no positions: keep own structure
+                        K = corr_from_cov(u["R"][b])
+                Ks.append(K)
+            smodel = ("identity" if spatial_model == "identity"
+                      else "kernel" if normative_spatial(u["R"][0], pos, u["avg_ref"]) is not None else "own-spatial")
+            Rref_u = np.stack([rel[b] * ptot * Ks[b] for b in range(nb)])
             mode = f"normative-{smodel}"
         M = np.empty((nb, C, C))
         for b in range(nb):
@@ -274,7 +304,7 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
             g1 = (mub / Pb) ** (alpha / 2.0)
             # Stage 2: OT alignment of the spatial structure (within the data's support).
             T = ot_map((g1[:, None] * S) * g1[None, :], Rref_u[b])
-            A = ((1.0 - alpha) * np.eye(C) + alpha * T) * g1[None, :]
+            A = ((1.0 - sa) * np.eye(C) + sa * T) * g1[None, :]
             # Renormalize so each channel's band power lands exactly on
             # P^(1-alpha) * mu^alpha, even when the data are rank-deficient.
             diag = np.clip(np.einsum("ij,jk,ik->i", A, S, A), 1e-30, None)

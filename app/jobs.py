@@ -167,7 +167,8 @@ class Job:
                 avg_ref=all(info[r]["avg_ref"] for r in rids), pos=first["pos"]))
             for r in rids:
                 info[r]["unit"] = f"unit{g}"
-        ops = E.build_operators(units, bands, alpha, reference=reference, spatial_model=spatial)
+        ops = E.build_operators(units, bands, alpha, reference=reference, spatial_model=spatial,
+                                spatial_alpha=p.get("spatial_alpha"))
 
         # 3. neutralize, write in the original format, measure
         for k, spec in enumerate(specs):
