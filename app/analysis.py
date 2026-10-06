@@ -82,6 +82,8 @@ def adaptive_attack(units, key, bands):
     if "theta" not in names or "beta" not in names:
         return None
     common = _common(units)
+    if len(common) < 2:
+        return None
     subj = {}
     for u in units:
         sel = _select(u, common)
@@ -117,10 +119,13 @@ def cohort_report(units, bands):
         return out
     common = _common(units)
     out["common_channels"] = len(common)
+    # theta/beta over the shared channels; montages with nothing in common fall back to
+    # each recording's whole scalp (Lambda and the attacker need shared channels)
+    shared = len(common) >= 2
     for stage in ("in", "out"):
         tb = {}
         for u in units:
-            v = biomarkers(u[f"P_{stage}"], bands, _select(u, common)).get("theta_beta")
+            v = biomarkers(u[f"P_{stage}"], bands, _select(u, common) if shared else None).get("theta_beta")
             tb.setdefault(u["subject"], []).append(v)
         out[f"theta_beta_{stage}"] = {s: float(np.mean(v)) for s, v in tb.items()}
         out[f"theta_beta_var_{stage}"] = float(np.var([np.mean(v) for v in tb.values()]))
@@ -161,6 +166,59 @@ def envelope(data, n_bins=1200):
         seg = np.asarray(data[:, edges[i]:max(edges[i + 1], edges[i] + 1)], dtype=np.float64)
         env[i] = np.sqrt(np.mean(seg ** 2))
     return env
+
+
+def fidelity(x_in, x_out, fs, bands, mask, chunk_s=30.0, pad_s=5.0):
+    """Per-channel input/output correlation on clean samples, broadband and per band.
+
+    mask: boolean (N,) of samples used for fitting (artifacts excluded), so bursts
+    that pass through untouched cannot inflate the score. Returns (broadband (C,),
+    within-band (nb, C)); within-band ignores pure rescaling, which is the biomarker
+    change itself, and measures how much the brain dynamics in each band moved.
+    """
+    from numpy.fft import irfft, rfft, rfftfreq
+    from scipy.fft import next_fast_len
+
+    from .engine import band_weights
+
+    C, N = x_in.shape
+    nb = len(bands)
+    S = np.zeros((nb + 1, 5, C))
+    core, pad = max(1, int(chunk_s * fs)), int(pad_s * fs)
+    for a in range(0, N, core):
+        b = min(N, a + core)
+        mk = mask[a:b]
+        if not mk.any():
+            continue
+        lo, hi = max(0, a - pad), min(N, b + pad)
+        xi = np.asarray(x_in[:, lo:hi], np.float64)
+        xo = np.asarray(x_out[:, lo:hi], np.float64)
+        L, off = hi - lo, a - lo
+        nfft = next_fast_len(L)
+        Xi, Xo = rfft(xi, nfft, axis=1), rfft(xo, nfft, axis=1)
+        W, _ = band_weights(rfftfreq(nfft, 1.0 / fs), bands)
+
+        def acc(k, u, v):
+            u, v = u[:, off:off + (b - a)][:, mk], v[:, off:off + (b - a)][:, mk]
+            S[k] += np.stack([u.sum(1), v.sum(1), (u * u).sum(1), (v * v).sum(1), (u * v).sum(1)])
+
+        acc(0, xi, xo)
+        for k in range(nb):
+            acc(k + 1, irfft(Xi * W[k], nfft, axis=1)[:, :L], irfft(Xo * W[k], nfft, axis=1)[:, :L])
+    n = max(int(mask.sum()), 1)
+    sx, sy, sxx, syy, sxy = np.moveaxis(S, 1, 0)
+    cov = sxy / n - sx * sy / n ** 2
+    var = (sxx / n - (sx / n) ** 2) * (syy / n - (sy / n) ** 2)
+    r = cov / np.sqrt(np.clip(var, 1e-60, None))
+    return r[0], r[1:]
+
+
+def window_sample_mask(N, starts, nper):
+    """Samples covered by the kept analysis windows."""
+    cov = np.zeros(N + 1, np.int32)
+    np.add.at(cov, starts, 1)
+    np.add.at(cov, np.minimum(starts + nper, N), -1)
+    return np.cumsum(cov[:N]) > 0
 
 
 def channel_fidelity(a, b, chunk=200_000):

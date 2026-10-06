@@ -36,7 +36,9 @@ SANE separates each recording into a **trait** (what stays constant for a subjec
 
 Both operators are constant per subject, so they are applied to the whole continuous recording as a frequency-dependent spatial filter. The band weights add up to exactly one: at strength 0 the output is bit-identical to the input, and content below 1 Hz and above 45 Hz is preserved.
 
-**Reference.** With two or more subjects, SANE aligns everyone to the cohort average, pooled channel by channel so slightly different montages still match. A single subject is aligned to a built-in normative profile, with a head-geometry spatial model when electrode positions are known.
+**Reference.** With two or more subjects, SANE aligns everyone to the cohort average, pooled channel by channel so slightly different montages still match. A recording whose channel names no other subject shares falls back to the normative reference, and the report says so. A single subject is aligned to a built-in normative profile: each channel keeps its own overall power and takes on the normative spectral shape.
+
+**Spatial alignment** is automatic by default. It is on at full strength against a cohort, which is a measured reference. Against the normative profile it is off, because the only spatial target there is a generic head model, and alignment would rebuild each channel largely from its neighbours. On real recordings, that cost 15-40% of the within-band brain dynamics without improving biomarker removal. The slider sets it by hand, for example to also remove a single subject's spatial fingerprint.
 
 **Robustness.** Fitting skips windows with amplifier saturation, spikes or flat signal, and anything annotated `BAD_*`. Channels typed as EEG but named like EOG, ECG/EKG, EMG or triggers are passed through untouched, as are flat and bad channels. Rank-deficient data (average reference, ICA-cleaned) is handled without amplifying null directions.
 
@@ -49,7 +51,11 @@ Each session produces before/after measurements:
 - **Between-subject θ/β variance**: with variance at zero, any threshold classifier on the biomarker is at chance (balanced accuracy Φ(d/2) with d → 0).
 - **Trait Leakage Index Λ**: mean subject identifiability (intraclass correlation) of band-power features across the cohort.
 - **Adaptive attacker**: a leave-one-subject-out ridge model trying to recover each subject's θ/β (5+ subjects).
-- **Signal fidelity**: per-channel correlation between input and output.
+- **Signal fidelity**: per-channel correlation between input and output on clean (artifact-free) samples, broadband and within each band. The within-band score, shown as **Brain dynamics kept**, ignores the per-band rescaling that is the biomarker change itself.
+
+## Supported files
+
+EDF/EDF+, BDF (Biosemi), BrainVision (`.vhdr` + `.vmrk` + `.eeg`), EEGLAB (`.set`, with or without `.fdt`) and FIF. You get back the same format. EDF, BDF and BrainVision outputs are made by editing your uploaded file, so only the EEG samples change. Header fields (labels, units, filters, sampling rates) are kept, apart from the personal fields you choose to strip and the physical range of processed channels. Every marker is kept, and every non-EEG channel stays bit-identical. EEGLAB and FIF are rewritten with MNE. Each format was tested end to end on public OpenNeuro recordings (`tests/test_downloaded.py`).
 
 On a real depression dataset (OpenNeuro ds003478, three subjects), SANE cut between-subject θ/β variance by more than 99.99% and lowered Λ from 0.51 to 0.008, while each output channel kept a 0.98 correlation with its input.
 

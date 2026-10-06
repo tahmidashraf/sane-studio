@@ -23,8 +23,16 @@ FORMAT_LABEL = {"edf": "EDF", "bdf": "BDF", "brainvision": "BrainVision",
 
 # Channels that are typed as EEG in many files but are not scalp EEG.
 NON_EEG_NAME = re.compile(
-    r"(EOG|ECG|EKG|EMG|STATUS|TRIG|^STI|STIM|RESP|GSR|EDA|PULSE|PLETH|SPO2|SAO2|ACC|GYRO|"
-    r"PHOTIC|MARKER|EVENT|AUX|EXG|THERM|BREATH|SNORE|LIGHT|^[XYZ]\d*$|^BIP|^MISC)")
+    r"(EOG|ECG|EKG|EMG|STATUS|TRIG|^STI|STIM|RESP|GSR|EDA|PULSE|PLET|SPO2|SAO2|ACC|GYRO|"
+    r"PHOTIC|MARKER|EVENT|AUX|EXG|THERM|TEMP|BREATH|SNORE|LIGHT|^ERG|^ANA\d|^[XYZ]\d*$|^BIP|^MISC)")
+# Units a scalp EEG channel can be stored in; anything else (nS, degC, bpm, Boolean...) is a sensor.
+VOLT_SCALE = {"v": 1.0, "mv": 1e3, "uv": 1e6, "nv": 1e9}
+
+
+def _volt_scale(unit):
+    """Factor from volts to a file's voltage unit, or None if the unit is not a voltage."""
+    u = str(unit or "").strip().lower().replace("µ", "u").replace("μ", "u")
+    return VOLT_SCALE.get(u)
 
 
 @dataclass
@@ -34,6 +42,7 @@ class RecordingSpec:
     header: Path
     companions: list[Path] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    writer: str = ""
 
     @property
     def base(self) -> str:
@@ -55,14 +64,17 @@ def safe_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9._ \-()+]", "_", name).strip()
 
 
+def _text_encoding(path: Path) -> str:
+    """UTF-8 if the file decodes as UTF-8, otherwise Latin-1 (older BrainVision 'ANSI' files)."""
+    try:
+        path.read_bytes().decode("utf-8")
+        return "utf-8"
+    except UnicodeDecodeError:
+        return "latin-1"
+
+
 def _read_text(path: Path) -> str:
-    raw = path.read_bytes()
-    for enc in ("utf-8", "latin-1"):
-        try:
-            return raw.decode(enc)
-        except UnicodeDecodeError:
-            continue
-    return raw.decode("latin-1", errors="ignore")
+    return path.read_bytes().decode(_text_encoding(path))
 
 
 def _vhdr_refs(vhdr: Path):
@@ -79,8 +91,8 @@ def _repoint_vhdr(vhdr: Path, kind: str, new_name: str):
     """Rewrite a DataFile/MarkerFile reference so MNE finds the uploaded companion."""
     key = "DataFile" if kind == "datafile" else "MarkerFile"
     text = _read_text(vhdr)
-    text = re.sub(rf"(?im)^(\s*{key}\s*=).*$", lambda m: m.group(1) + new_name, text)
-    vhdr.write_text(text, encoding="utf-8")
+    text = re.sub(rf"(?im)^(\s*{key}\s*=)[^\r\n]*", lambda m: m.group(1) + new_name, text)
+    vhdr.write_bytes(text.encode(_text_encoding(vhdr), errors="replace"))
 
 
 def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
@@ -152,14 +164,18 @@ def classify_channels(raw, sample_seconds: float = 60.0):
     """Split channels into SANE-processed scalp EEG and untouched pass-through channels."""
     types = raw.get_channel_types()
     bads = set(raw.info["bads"])
+    orig_units = getattr(raw, "_orig_units", None) or {}
     n = min(raw.n_times, int(sample_seconds * raw.info["sfreq"]))
     eeg, passthrough, reasons = [], [], {}
     for i, (name, kind) in enumerate(zip(raw.ch_names, types)):
         key = "".join(name.split()).upper()
+        unit = orig_units.get(name)
         if kind != "eeg":
             reasons[name] = f"{kind} channel"
         elif name in bads:
             reasons[name] = "marked bad"
+        elif unit and _volt_scale(unit) is None:
+            reasons[name] = f"sensor, recorded in {unit}"
         elif NON_EEG_NAME.search(key):
             reasons[name] = "non-EEG signal (by name)"
         else:
@@ -253,10 +269,130 @@ def output_name(spec: RecordingSpec, suffix: str = "_sane") -> str:
     return f"{base}{suffix}{ext}"
 
 
-def write(raw, spec: RecordingSpec, out_dir: Path, suffix: str = "_sane") -> list[Path]:
-    """Write raw in the recording's original format; return every file produced."""
+def _write_edf_inplace(raw, spec, path, processed, anonymize):
+    """Edit the original EDF/BDF: replace only the processed signals.
+
+    Every header field (labels, units, transducers, prefiltering, per-signal sampling
+    rates, record layout) and every untouched signal stays exactly as recorded.
+    """
+    import edfio
+
+    edf = (edfio.read_bdf if spec.fmt == "bdf" else edfio.read_edf)(spec.header)
+    sigs = list(edf.signals)
+    if len(sigs) != len(raw.ch_names):
+        raise ValueError("signal count differs from MNE's channel list")
+    for i in processed:
+        s, name = sigs[i], raw.ch_names[i]
+        label = s.label.strip()
+        if name != label and not name.startswith(label):
+            raise ValueError(f"signal {label!r} does not match channel {name!r}")
+        scale = _volt_scale(s.physical_dimension)
+        if scale is None or s.sampling_frequency != raw.info["sfreq"]:
+            raise ValueError(f"{label}: unit {s.physical_dimension!r} or rate not writable in place")
+        new = s.data.copy()
+        n = min(len(new), raw.n_times)
+        new[:n] = raw._data[i, :n] * scale
+        s.update_data(new)
+    if anonymize:
+        edf.anonymize()
+    edf.write(path)
+    return [path]
+
+
+def _vhdr_value(text, section, key):
+    current = None
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("[") and "]" in s:
+            current = s[1:s.index("]")].strip().lower()
+        elif current == section.lower() and "=" in s and not s.startswith(";"):
+            k, v = s.split("=", 1)
+            if k.strip().lower() == key.lower():
+                return v.strip()
+    return None
+
+
+def _write_bv_inplace(raw, spec, path, processed, anonymize):
+    """Rewrite a BrainVision recording from its own files.
+
+    The header and marker files are copied verbatim (only file references change), so
+    marker types, channel properties and comments survive. The data file keeps its
+    binary format, orientation and per-channel resolution; integer files are promoted
+    to IEEE_FLOAT_32 only if the processed values would not fit.
+    """
+    text = _read_text(spec.header)
+    if (_vhdr_value(text, "Common Infos", "DataFormat") or "BINARY").upper() != "BINARY":
+        raise ValueError("only binary BrainVision data can be written in place")
+    orient = (_vhdr_value(text, "Common Infos", "DataOrientation") or "MULTIPLEXED").upper()
+    nch = int(_vhdr_value(text, "Common Infos", "NumberOfChannels"))
+    fmt = (_vhdr_value(text, "Binary Infos", "BinaryFormat") or "INT_16").upper()
+    big = (_vhdr_value(text, "Common Infos", "UseBigEndianOrder") or "NO").upper() == "YES"
+    base = {"INT_16": "i2", "UINT_16": "u2", "INT_32": "i4", "IEEE_FLOAT_32": "f4"}[fmt]
+    dtype = np.dtype((">" if big else "<") + base)
+    if nch != len(raw.ch_names):
+        raise ValueError("channel count differs from MNE's channel list")
+    res, scales = [], []
+    for k in range(1, nch + 1):
+        parts = (_vhdr_value(text, "Channel Infos", f"Ch{k}") or "").split(",")
+        res.append(float(parts[2]) if len(parts) > 2 and parts[2].strip() else 1.0)
+        scales.append(_volt_scale(parts[3] if len(parts) > 3 and parts[3].strip() else "µV"))
+    eeg_file = next(c for c in spec.companions if c.suffix.lower() == ".eeg")
+    vmrk_file = next((c for c in spec.companions if c.suffix.lower() == ".vmrk"), None)
+    flat = np.fromfile(eeg_file, dtype=dtype)
+    nsamp = flat.size // nch
+    data = (flat[: nsamp * nch].reshape(nsamp, nch) if orient == "MULTIPLEXED"
+            else flat[: nsamp * nch].reshape(nch, nsamp).T)
+    n = min(nsamp, raw.n_times)
+    new = {}
+    for i in processed:
+        if scales[i] is None:
+            raise ValueError(f"channel {raw.ch_names[i]} is not stored in a voltage unit")
+        new[i] = raw._data[i, :n] * scales[i] / res[i]
+    out = data.copy()
+    if dtype.kind in "iu":
+        info = np.iinfo(dtype)
+        if any(np.nanmax(v) > info.max or np.nanmin(v) < info.min for v in new.values()):
+            out, fmt = data.astype((">" if big else "<") + "f4"), "IEEE_FLOAT_32"
+    for i, v in new.items():
+        out[:n, i] = np.round(v) if out.dtype.kind in "iu" else v
+    eeg_out, vmrk_out = path.with_suffix(".eeg"), path.with_suffix(".vmrk")
+    (out if orient == "MULTIPLEXED" else out.T).astype(out.dtype, copy=False).tofile(eeg_out)
+    text = re.sub(r"(?im)^(\s*DataFile\s*=)[^\r\n]*", lambda m: m.group(1) + eeg_out.name, text)
+    text = re.sub(r"(?im)^(\s*MarkerFile\s*=)[^\r\n]*", lambda m: m.group(1) + vmrk_out.name, text)
+    text = re.sub(r"(?im)^(\s*BinaryFormat\s*=)[^\r\n]*", lambda m: m.group(1) + fmt, text)
+    path.write_bytes(text.encode(_text_encoding(spec.header), errors="replace"))   # line endings as uploaded
+    files = [path, eeg_out]
+    if vmrk_file is not None:
+        marks = _read_text(vmrk_file)
+        marks = re.sub(r"(?im)^(\s*DataFile\s*=)[^\r\n]*", lambda m: m.group(1) + eeg_out.name, marks)
+        if anonymize:   # drop the recording timestamp carried by "New Segment" markers
+            marks = re.sub(r"(?im)^(Mk\d+=New Segment(?:,[^,\r\n]*){4}),\d+[ \t]*(?=\r?$)", r"\1", marks)
+        vmrk_out.write_bytes(marks.encode(_text_encoding(vmrk_file), errors="replace"))
+        files.insert(1, vmrk_out)
+    return files
+
+
+def write(raw, spec: RecordingSpec, out_dir: Path, suffix: str = "_sane",
+          processed=None, anonymize: bool = False) -> list[Path]:
+    """Write raw in the recording's original format; return every file produced.
+
+    With `processed` (indices of channels that changed), EDF/BDF and BrainVision are
+    written by editing the uploaded files, keeping every header detail and untouched
+    channel exact. spec.writer records which path was used.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / output_name(spec, suffix)
+    if processed is not None and spec.fmt in ("edf", "bdf", "brainvision"):
+        try:
+            fn = _write_bv_inplace if spec.fmt == "brainvision" else _write_edf_inplace
+            files = fn(raw, spec, path, processed, anonymize)
+            spec.writer = "original file, EEG samples replaced"
+            return files
+        except Exception as exc:  # noqa: BLE001 - fall back to a full export
+            spec.warnings.append(f"wrote a fresh {FORMAT_LABEL[spec.fmt]} file ({exc})")
+    if anonymize:
+        raw.anonymize(verbose="ERROR")
+    spec.writer = "MNE export"
     if spec.fmt == "fif":
         raw.save(path, overwrite=True, verbose="ERROR")
         return [path]

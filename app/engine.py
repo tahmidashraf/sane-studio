@@ -26,6 +26,7 @@ BAND_DEFS = (
 NORMATIVE_REL = {"delta": 0.3383, "theta": 0.1804, "alpha": 0.2296,
                  "beta": 0.1941, "gamma": 0.0568}
 KERNEL_LENGTH_M = 0.06          # spatial correlation length of the normative kernel
+MIN_COHORT_COVERAGE = 0.5       # share of a unit's channels another subject must also have
 WIN_S = 4.0                     # Welch window for statistics (0.25 Hz bins)
 MIN_DURATION_S = 10.0
 
@@ -252,10 +253,12 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
     reference: 'auto' | 'cohort' | 'normative'.
     spatial_model (normative only): 'kernel' (head geometry where positions are
       known, the subject's own structure elsewhere) | 'identity' (full whitening).
-    alpha sets spectral neutralization; spatial_alpha (default alpha) sets how far the
-    spatial covariance is moved, so channel-specific analyses can keep more of it.
+    alpha sets spectral neutralization; spatial_alpha sets how far the spatial covariance
+    is moved, so channel-specific analyses can keep more of it. None means automatic:
+    alpha for units aligned to a cohort (a measured reference) and 0 for normative units,
+    where the only spatial target is a generic head model and alignment rebuilds each
+    channel largely from its neighbours.
     """
-    sa = alpha if spatial_alpha is None else float(spatial_alpha)
     nb = len(bands)
     names = [b[0] for b in bands]
     rel = np.array([NORMATIVE_REL[n] for n in names])
@@ -268,17 +271,30 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
     out = {}
     for u in units:
         C = len(u["ch_names"])
+        coverage, in_cohort = 0.0, False
         if use_cohort:
             idx = np.array([ix[norm_name(n)] for n in u["ch_names"]])
-            mu_u = mu_all[idx]
+            shared = cnt[idx] >= 2
+            coverage = float(np.mean(shared))
+            # A montage no other subject shares has only itself as reference, which would
+            # leave the recording unchanged; such units use the normative reference instead.
+            in_cohort = coverage >= MIN_COHORT_COVERAGE
+        if in_cohort:
+            mu_u = mu_all[idx].copy()
+            if not shared.all():
+                # channels only this subject has: the cohort's spectral shape at their own power
+                shape = (mu_u[shared] / mu_u[shared].sum(1, keepdims=True)).mean(0)
+                mu_u[~shared] = u["P"][~shared].sum(1, keepdims=True) * shape[None, :]
             Rref_u = np.stack([np.sqrt(mu_u[:, b])[:, None]
                                * nearest_corr(Cbar_all[b][np.ix_(idx, idx)])
                                * np.sqrt(mu_u[:, b])[None, :] for b in range(nb)])
-            mode, coverage = "cohort", float(np.mean(cnt[idx] >= 2))
+            mode = "cohort"
         else:
-            coverage = 0.0
-            ptot = float(np.mean(u["P"].sum(1)))
-            mu_u = np.tile(rel * ptot, (C, 1))                                       # (C, nb)
+            # The normative reference fixes the spectral shape only. Each channel keeps its
+            # own total power: amplitude across the scalp mostly reflects the reference
+            # electrode and impedances, and forcing channels next to the reference up to the
+            # scalp mean would pull their signal in from neighbours.
+            mu_u = u["P"].sum(1, keepdims=True) * rel[None, :]                        # (C, nb)
             pos = u.get("pos")
             Ks = []
             for b in range(nb):
@@ -294,8 +310,10 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
                 Ks.append(K)
             smodel = ("identity" if spatial_model == "identity"
                       else "kernel" if normative_spatial(u["R"][0], pos, u["avg_ref"]) is not None else "own-spatial")
-            Rref_u = np.stack([rel[b] * ptot * Ks[b] for b in range(nb)])
+            Rref_u = np.stack([np.sqrt(mu_u[:, b])[:, None] * Ks[b] * np.sqrt(mu_u[:, b])[None, :]
+                               for b in range(nb)])
             mode = f"normative-{smodel}"
+        sa = (alpha if in_cohort else 0.0) if spatial_alpha is None else float(spatial_alpha)
         M = np.empty((nb, C, C))
         for b in range(nb):
             S, Pb = u["R"][b], np.clip(u["P"][:, b], 1e-30, None)
@@ -315,7 +333,8 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
             target = np.clip(u["P"], 1e-30, None) ** (1.0 - alpha) * np.clip(mu_u, 1e-30, None) ** alpha
             M = refine_operator(M, csd, u["csd_freqs"], bands, u["scale"], target)
         out[u["key"]] = {"M": M, "mode": mode, "Rref": Rref_u, "mu": mu_u, "coverage": coverage,
-                         "n_subjects_in_reference": len(subjects) if use_cohort else 0}
+                         "n_subjects_in_reference": len(subjects) if in_cohort else 0,
+                         "cohort_fallback": use_cohort and not in_cohort, "spatial_alpha": sa}
     return out
 
 

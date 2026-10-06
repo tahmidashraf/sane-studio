@@ -83,6 +83,8 @@ button, input, select { font: inherit; color: inherit; }
 .btn.ghost { border-color: transparent; background: transparent; color: var(--text-2); }
 .btn.ghost:hover { background: var(--surface-3); color: var(--text); }
 .btn.sm { height: 30px; padding: 0 10px; font-size: 13px; }
+.btn.inline-btn { display: inline; height: auto; padding: 0 2px; font-size: inherit; color: var(--out);
+  text-decoration: underline; text-underline-offset: 2px; }
 .btn.icon { width: 32px; padding: 0; height: 32px; }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn svg { width: 16px; height: 16px; flex: none; }

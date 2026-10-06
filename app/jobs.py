@@ -26,7 +26,24 @@ _PROCESS_SLOTS = threading.BoundedSemaphore(int(os.environ.get("SANE_WORKERS", "
 
 
 def _f(x, nd=4):
-    return None if x is None else round(float(x), nd)
+    return None if x is None or not np.isfinite(x) else round(float(x), nd)
+
+
+def _fallback_note(coverage):
+    share = ("No other subject in this upload has channels with these names"
+             if coverage == 0 else f"Only {100 * coverage:.0f}% of these channel names appear in another subject's recording")
+    return f"{share}, so this recording was matched to the normative reference instead of the cohort."
+
+
+def _finite(obj):
+    """Replace NaN/inf anywhere in a report with None so it always serializes as JSON."""
+    if isinstance(obj, dict):
+        return {k: _finite(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_finite(v) for v in obj]
+    if isinstance(obj, (float, np.floating)):
+        return float(obj) if np.isfinite(obj) else None
+    return obj
 
 
 class Job:
@@ -106,47 +123,91 @@ class Job:
         preserve_oob = bool(p.get("preserve_oob", True))
         anonymize = bool(p.get("anonymize", True))
         subjects = p.get("subjects", {})
+        for rec in self.recordings.values():          # a re-run starts clean
+            if rec.get("status") == "error" and str(rec.get("message", "")).startswith("could not be"):
+                rec.update(status="ready", message="")
         specs = [s for s in self.specs if self.recordings[s.rid]["status"] != "error"]
         if not specs:
             raise ValueError("no readable recordings to process")
         shutil.rmtree(self.dir / "output", ignore_errors=True)
         (self.dir / "output").mkdir()
         bands = E.active_bands(min(self.recordings[s.rid]["fs"] for s in specs))
-        n = len(specs)
 
-        # 1. statistics of every recording
+        # 1. statistics of every recording; a failing file is reported, not fatal
         info = {}
         for k, spec in enumerate(specs):
-            self.set_stage(f"Analyzing {spec.header.name}", 0.02 + 0.38 * k / n)
-            raw = F.read(spec, preload=True)
-            eeg, passthrough, why = F.classify_channels(raw)
-            fs, N = float(raw.info["sfreq"]), int(raw.n_times)
-            x_in = np.lib.format.open_memmap(self._path(spec.rid, "in.npy"), "w+", np.float32, (int(len(eeg)), N))
-            aux_idx = [i for i in passthrough if raw.get_channel_types([i])[0] not in ("stim",)]
-            aux = np.lib.format.open_memmap(self._path(spec.rid, "aux.npy"), "w+", np.float32,
-                                            (max(1, len(aux_idx)), N))
-            for a in range(0, N, CHUNK):
-                x_in[:, a:a + CHUNK] = raw.get_data(picks=eeg, start=a, stop=min(N, a + CHUNK))
-                if aux_idx:
-                    aux[:, a:a + CHUNK] = raw.get_data(picks=aux_idx, start=a, stop=min(N, a + CHUNK))
-            x_in.flush()
-            aux.flush()
-            keep = E.artifact_mask(x_in, fs, F.bad_sample_mask(raw))
-            st = E.welch_stats(x_in, fs, bands, keep=keep)
-            np.save(self._path(spec.rid, "csd.npy"), st["csd"])
-            pos = F.electrode_positions(raw, eeg)
-            ann = [{"t": round(float(a["onset"] - raw.first_time), 4), "d": round(float(a["duration"]), 4),
-                    "label": str(a["description"])} for a in raw.annotations][:5000]
-            ch_names = [raw.ch_names[i] for i in eeg]
-            info[spec.rid] = dict(
-                spec=spec, eeg=eeg, ch_names=ch_names, aux_names=[raw.ch_names[i] for i in aux_idx],
-                fs=fs, N=N, keep=keep, st=st, pos=pos, ann=ann, n_events=len(raw.annotations),
-                subject=str(subjects.get(spec.rid) or self.recordings[spec.rid]["subject"]),
-                avg_ref=E.is_average_referenced(st["R"].sum(0)))
-            del raw, x_in, aux
+            self.set_stage(f"Analyzing {spec.header.name}", 0.02 + 0.38 * k / len(specs))
+            try:
+                info[spec.rid] = self._analyze(spec, bands, subjects)
+            except Exception as exc:  # noqa: BLE001
+                self._fail(spec, f"could not be analyzed: {exc}")
+        if not info:
+            raise ValueError("none of the recordings could be processed")
+        specs = [s for s in specs if s.rid in info]
 
         # 2. reference and operators (one unit per subject x montage x sampling rate)
         self.set_stage("Building the reference", 0.42)
+        ops = self._operators(info, bands, alpha, reference, spatial)
+
+        # 3. neutralize, write in the original format, measure
+        n = len(specs)
+        for k, spec in enumerate(specs):
+            base = 0.45 + 0.45 * k / n
+            self.set_stage(f"Neutralizing {spec.header.name}", base)
+            try:
+                self._neutralize(spec, info[spec.rid], ops, bands, alpha, preserve_oob, anonymize, base, n)
+            except Exception as exc:  # noqa: BLE001
+                self._fail(spec, f"could not be written: {exc}")
+                info.pop(spec.rid)
+        if not info:
+            raise ValueError("none of the recordings could be written")
+
+        # 4. report and packages
+        self.set_stage("Building the privacy report", 0.92)
+        self.report = self._report(info, bands, alpha, preserve_oob)
+        self.set_stage("Packaging downloads", 0.96)
+        with zipfile.ZipFile(self.dir / "output" / "sane_outputs.zip", "w", zipfile.ZIP_DEFLATED) as z:
+            for d in info.values():
+                for f in d["files"]:
+                    z.write(f, f.name)
+            z.writestr("SANE_REPORT.json", json.dumps(self.report, indent=2))
+        meta = {rid: {"ch_names": d["ch_names"], "aux_names": d["aux_names"], "fs": d["fs"], "N": d["N"],
+                      "annotations": d["ann"], "bands": [b[0] for b in bands]} for rid, d in info.items()}
+        (self.dir / "work" / "meta.json").write_text(json.dumps(meta))
+
+    def _fail(self, spec, message):
+        traceback.print_exc()
+        self.recordings[spec.rid].update(status="error", message=message)
+
+    def _analyze(self, spec, bands, subjects):
+        raw = F.read(spec, preload=True)
+        eeg, passthrough, why = F.classify_channels(raw)
+        if len(eeg) < 2:
+            raise ValueError("fewer than two EEG channels")
+        fs, N = float(raw.info["sfreq"]), int(raw.n_times)
+        x_in = np.lib.format.open_memmap(self._path(spec.rid, "in.npy"), "w+", np.float32, (int(len(eeg)), N))
+        aux_idx = [i for i in passthrough if raw.get_channel_types([i])[0] not in ("stim",)]
+        aux = np.lib.format.open_memmap(self._path(spec.rid, "aux.npy"), "w+", np.float32,
+                                        (max(1, len(aux_idx)), N))
+        for a in range(0, N, CHUNK):
+            x_in[:, a:a + CHUNK] = raw.get_data(picks=eeg, start=a, stop=min(N, a + CHUNK))
+            if aux_idx:
+                aux[:, a:a + CHUNK] = raw.get_data(picks=aux_idx, start=a, stop=min(N, a + CHUNK))
+        x_in.flush()
+        aux.flush()
+        keep = E.artifact_mask(x_in, fs, F.bad_sample_mask(raw))
+        st = E.welch_stats(x_in, fs, bands, keep=keep)
+        np.save(self._path(spec.rid, "csd.npy"), st["csd"])
+        ann = [{"t": round(float(a["onset"] - raw.first_time), 4), "d": round(float(a["duration"]), 4),
+                "label": str(a["description"])} for a in raw.annotations][:5000]
+        return dict(
+            spec=spec, eeg=eeg, ch_names=[raw.ch_names[i] for i in eeg],
+            aux_names=[raw.ch_names[i] for i in aux_idx], fs=fs, N=N, keep=keep, st=st,
+            pos=F.electrode_positions(raw, eeg), ann=ann, n_events=len(raw.annotations),
+            subject=str(subjects.get(spec.rid) or self.recordings[spec.rid]["subject"]),
+            avg_ref=E.is_average_referenced(st["R"].sum(0)))
+
+    def _operators(self, info, bands, alpha, reference, spatial):
         groups = {}
         for rid, d in info.items():
             key = (d["subject"], tuple(E.norm_name(c) for c in d["ch_names"]), d["fs"])
@@ -167,59 +228,41 @@ class Job:
                 avg_ref=all(info[r]["avg_ref"] for r in rids), pos=first["pos"]))
             for r in rids:
                 info[r]["unit"] = f"unit{g}"
-        ops = E.build_operators(units, bands, alpha, reference=reference, spatial_model=spatial,
-                                spatial_alpha=p.get("spatial_alpha"))
+        return E.build_operators(units, bands, alpha, reference=reference, spatial_model=spatial,
+                                 spatial_alpha=self.params.get("spatial_alpha"))
 
-        # 3. neutralize, write in the original format, measure
-        for k, spec in enumerate(specs):
-            d = info[spec.rid]
-            op = ops[d["unit"]]
-            base = 0.45 + 0.45 * k / n
-            self.set_stage(f"Neutralizing {spec.header.name}", base)
-            x_in = np.load(self._path(spec.rid, "in.npy"), mmap_mode="r")
-            x_out = np.lib.format.open_memmap(self._path(spec.rid, "out.npy"), "w+", np.float32, tuple(int(v) for v in x_in.shape))
-            E.apply_operator(x_in, x_out, d["fs"], bands, op["M"], preserve_oob=preserve_oob,
-                             avg_ref=d["avg_ref"],
-                             progress=lambda f, b=base: self.set_stage(self.stage, b + 0.3 * f * 0.45 / n))
-            x_out.flush()
-            self.set_stage(f"Writing {F.FORMAT_LABEL[spec.fmt]} output", base + 0.32 * 0.45 / n)
-            raw = F.read(spec, preload=True)
-            for a in range(0, d["N"], CHUNK):
-                raw._data[d["eeg"], a:a + CHUNK] = x_out[:, a:a + CHUNK]
-            if anonymize:
-                raw.anonymize(verbose="ERROR")
-            if spec.fmt == "fif":
-                raw.info["description"] = (f"Processed by SANE (alpha={alpha}, reference={op['mode']}); "
-                                           "subject-level spectral and spatial biomarkers neutralized.")
-            files = F.write(raw, spec, self.dir / "output" / spec.rid)
-            del raw
-            st_out = E.welch_stats(x_out, d["fs"], bands, keep=d["keep"])
-            fid = A.channel_fidelity(x_in, x_out)
-            np.savez_compressed(
-                self._path(spec.rid, "view.npz"),
-                psd_in=d["st"]["psd"].astype(np.float32), psd_out=st_out["psd"].astype(np.float32),
-                freqs=d["st"]["freqs"], P_in=d["st"]["P"], P_out=st_out["P"], mu=op["mu"],
-                corr_in=np.stack([E.corr_from_cov(r) for r in d["st"]["R"]]).astype(np.float32),
-                corr_out=np.stack([E.corr_from_cov(r) for r in st_out["R"]]).astype(np.float32),
-                corr_ref=np.stack([E.corr_from_cov(r) for r in op["Rref"]]).astype(np.float32),
-                env_in=A.envelope(x_in), env_out=A.envelope(x_out),
-                pos2d=A.project_2d(d["pos"]), fidelity=fid.astype(np.float32))
-            d.update(st_out=st_out, files=files, fidelity=fid, op=op)
-            self.recordings[spec.rid]["outputs"] = [f.name for f in files]
-            del x_in, x_out
-
-        # 4. report and packages
-        self.set_stage("Building the privacy report", 0.92)
-        self.report = self._report(info, bands, alpha, preserve_oob)
-        self.set_stage("Packaging downloads", 0.96)
-        with zipfile.ZipFile(self.dir / "output" / "sane_outputs.zip", "w", zipfile.ZIP_DEFLATED) as z:
-            for rid, d in info.items():
-                for f in d["files"]:
-                    z.write(f, f.name)
-            z.writestr("SANE_REPORT.json", json.dumps(self.report, indent=2))
-        meta = {rid: {"ch_names": d["ch_names"], "aux_names": d["aux_names"], "fs": d["fs"], "N": d["N"],
-                      "annotations": d["ann"], "bands": [b[0] for b in bands]} for rid, d in info.items()}
-        (self.dir / "work" / "meta.json").write_text(json.dumps(meta))
+    def _neutralize(self, spec, d, ops, bands, alpha, preserve_oob, anonymize, base, n):
+        op = ops[d["unit"]]
+        x_in = np.load(self._path(spec.rid, "in.npy"), mmap_mode="r")
+        x_out = np.lib.format.open_memmap(self._path(spec.rid, "out.npy"), "w+", np.float32,
+                                          tuple(int(v) for v in x_in.shape))
+        E.apply_operator(x_in, x_out, d["fs"], bands, op["M"], preserve_oob=preserve_oob, avg_ref=d["avg_ref"],
+                         progress=lambda f: self.set_stage(self.stage, base + 0.3 * f * 0.45 / n))
+        x_out.flush()
+        self.set_stage(f"Writing {F.FORMAT_LABEL[spec.fmt]} output", base + 0.32 * 0.45 / n)
+        raw = F.read(spec, preload=True)
+        for a in range(0, d["N"], CHUNK):
+            raw._data[d["eeg"], a:a + CHUNK] = x_out[:, a:a + CHUNK]
+        if spec.fmt == "fif":
+            raw.info["description"] = (f"Processed by SANE (alpha={alpha}, reference={op['mode']}); "
+                                       "subject-level spectral and spatial biomarkers neutralized.")
+        files = F.write(raw, spec, self.dir / "output" / spec.rid, processed=d["eeg"], anonymize=anonymize)
+        del raw
+        st_out = E.welch_stats(x_out, d["fs"], bands, keep=d["keep"])
+        mask = A.window_sample_mask(d["N"], d["st"]["starts"], int(round(E.WIN_S * d["fs"])))
+        fid, fid_band = A.fidelity(x_in, x_out, d["fs"], bands, mask)
+        np.savez_compressed(
+            self._path(spec.rid, "view.npz"),
+            psd_in=d["st"]["psd"].astype(np.float32), psd_out=st_out["psd"].astype(np.float32),
+            freqs=d["st"]["freqs"], P_in=d["st"]["P"], P_out=st_out["P"], mu=op["mu"],
+            corr_in=np.stack([E.corr_from_cov(r) for r in d["st"]["R"]]).astype(np.float32),
+            corr_out=np.stack([E.corr_from_cov(r) for r in st_out["R"]]).astype(np.float32),
+            corr_ref=np.stack([E.corr_from_cov(r) for r in op["Rref"]]).astype(np.float32),
+            env_in=A.envelope(x_in), env_out=A.envelope(x_out),
+            pos2d=A.project_2d(d["pos"]), fidelity=fid.astype(np.float32),
+            fidelity_band=fid_band.astype(np.float32))
+        d.update(st_out=st_out, files=files, fidelity=fid, fidelity_band=fid_band, op=op)
+        self.recordings[spec.rid]["outputs"] = [f.name for f in files]
 
     def _report(self, info, bands, alpha, preserve_oob):
         recs, cohort_units = [], []
@@ -238,12 +281,18 @@ class Job:
                 "power_dev_in": _f(A.power_deviation(P_in, op["mu"])),
                 "power_dev_out": _f(A.power_deviation(P_out, op["mu"])),
                 "fidelity_mean": _f(np.mean(d["fidelity"])), "fidelity_min": _f(np.min(d["fidelity"])),
+                "dynamics_mean": _f(np.mean(d["fidelity_band"])),
+                "dynamics_bands": {b[0]: _f(np.mean(v)) for b, v in zip(bands, d["fidelity_band"])},
+                "spatial_alpha": _f(op["spatial_alpha"], 2),
+                "spatial_alpha_auto": self.params.get("spatial_alpha") is None,
                 "events": d["n_events"], "out_of_band_preserved": preserve_oob,
+                "writer": d["spec"].writer,
+                "notes": list(d["spec"].warnings) + ([_fallback_note(op["coverage"])] if op.get("cohort_fallback") else []),
                 "outputs": [f.name for f in d["files"]]})
             cohort_units.append(dict(subject=d["subject"], ch_names=d["ch_names"], P_in=P_in, P_out=P_out,
                                      feats_in=d["st"]["feats"], feats_out=d["st_out"]["feats"]))
-        return {"alpha": alpha, "bands": [b[0] for b in bands], "recordings": recs,
-                "cohort": A.cohort_report(cohort_units, bands)}
+        return _finite({"alpha": alpha, "bands": [b[0] for b in bands], "recordings": recs,
+                        "cohort": A.cohort_report(cohort_units, bands)})
 
     # ------------------------------------------------------------ viewer data
     def meta(self, rid):

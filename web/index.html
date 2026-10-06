@@ -106,6 +106,12 @@
             <div class="hint">At 1 the subject-level biomarker is fully set to the reference. Lower values interpolate along the minimal-distortion path.</div>
           </div>
           <div class="field">
+            <div class="alpha-row"><label for="spAlpha">Spatial alignment</label><span class="alpha-val" id="spAlphaVal">Auto</span></div>
+            <input type="range" class="slider" id="spAlpha" min="0" max="1" step="0.05" value="0">
+            <div class="ticks"><span>0 · keep channels</span><span>1 · full</span></div>
+            <div class="hint">Moves each subject's channel covariance onto the reference, removing the spatial fingerprint. <b id="spAutoNote"></b> Spectral biomarker removal is not affected. <button type="button" class="btn ghost inline-btn" id="spAuto" hidden>Back to auto</button></div>
+          </div>
+          <div class="field">
             <label>Reference</label>
             <div class="seg" id="refSeg" role="group" aria-label="Reference">
               <button data-v="auto" aria-pressed="true">Auto</button><button data-v="cohort" aria-pressed="false">Cohort</button><button data-v="normative" aria-pressed="false">Normative</button>
@@ -155,7 +161,7 @@
 
       <div>
         <div class="rec-head">
-          <div><h1 id="recTitle"></h1><div class="facts" id="recFacts"></div></div>
+          <div><h1 id="recTitle"></h1><div class="facts" id="recFacts"></div><div class="notes" id="recNotes" hidden></div></div>
           <div class="spacer"></div>
           <button class="btn" id="dlOne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg><span id="dlOneLabel">Download</span></button>
         </div>

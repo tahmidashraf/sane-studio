@@ -147,7 +147,22 @@ function refHint() {
     ? `${n} subjects detected: each subject is aligned to the cohort average, channel by channel, so the group's typical profile is kept.`
     : ref === "cohort" ? "Cohort needs at least two subjects; the normative reference will be used instead."
     : "Each recording is aligned to a built-in normative profile. Upload several subjects to use a cohort reference.";
-  $("spatialField").style.opacity = cohort ? 0.5 : 1;
+  spatialAuto(cohort);
+  // the normative spatial model matters only when spatial alignment is on and there is no cohort
+  $("spatialField").style.opacity = cohort || +$("spAlpha").value === 0 ? 0.5 : 1;
+}
+// Spatial alignment defaults to automatic: full when aligning to a measured cohort,
+// off against the generic head model, where it would rebuild channels from neighbours.
+function spatialAuto(cohort) {
+  const s = $("spAlpha");
+  $("spAuto").hidden = !state.spTouched;
+  if (state.spTouched) { $("spAutoNote").textContent = ""; return; }
+  s.value = cohort ? $("alpha").value : 0;
+  s.style.setProperty("--fill", `${s.value * 100}%`);
+  $("spAlphaVal").textContent = cohort ? "Auto · full" : "Auto · off";
+  $("spAutoNote").textContent = cohort
+    ? "Auto: full, because the reference is your own cohort."
+    : "Auto: off against the built-in normative profile, so every channel keeps its own signal; raise it to also remove the spatial fingerprint.";
 }
 function bindSeg(id, k) {
   $(id).addEventListener("click", (e) => {
@@ -160,11 +175,20 @@ bindSeg("refSeg", "reference"); bindSeg("spatialSeg", "spatial_model");
 $("alpha").addEventListener("input", (e) => {
   $("alphaVal").textContent = (+e.target.value).toFixed(2);
   e.target.style.setProperty("--fill", `${e.target.value * 100}%`);
+  if (!state.spTouched) refHint();
 });
+$("spAlpha").addEventListener("input", (e) => {
+  state.spTouched = true;
+  $("spAlphaVal").textContent = (+e.target.value).toFixed(2);
+  e.target.style.setProperty("--fill", `${e.target.value * 100}%`);
+  refHint();
+});
+$("spAuto").addEventListener("click", () => { state.spTouched = false; refHint(); });
 $("runBtn").addEventListener("click", async () => {
   try {
     const job = await api.run(state.job.id, {
-      alpha: +$("alpha").value, reference: state.params.reference, spatial_model: state.params.spatial_model,
+      alpha: +$("alpha").value, spatial_alpha: state.spTouched ? +$("spAlpha").value : null,
+      reference: state.params.reference, spatial_model: state.params.spatial_model,
       preserve_oob: $("oob").checked, anonymize: $("anon").checked, subjects: subjectsMap() });
     state.job = job; poll();
   } catch (e) { toast(e.message, true); }
@@ -225,6 +249,9 @@ async function selectRec(rid) {
     `<span class="chip">${r.eeg_channels} EEG${r.passthrough_channels ? ` + ${r.passthrough_channels} aux` : ""}</span>`,
     `<span class="chip">${state.meta.fs} Hz</span>`, `<span class="chip">${fmtT(state.meta.N / state.meta.fs)}</span>`,
     `<span class="chip">${r.events} events</span>`, `<span class="chip out">${esc(refLabel)}</span>`].join("");
+  const notes = r.notes || [];
+  $("recNotes").hidden = !notes.length;
+  $("recNotes").textContent = notes.join(" ");
   renderKpis(r);
   $("psdChan").innerHTML = `<option value="mean">Mean of all EEG channels</option>` +
     meta_names().map((n, i) => `<option value="${i}">${esc(n)}</option>`).join("");
@@ -248,14 +275,22 @@ function kpi(title, a, b, sub, { better = "lower", digits = 3, single = false, m
 function renderKpis(r) {
   const ref = r.biomarkers_ref.theta_beta, c = state.job.report.cohort;
   const dIn = Math.abs(r.biomarkers_in.theta_beta - ref), dOut = Math.abs(r.biomarkers_out.theta_beta - ref);
+  const [lamHead, lamSub] = c.n_subjects >= 2
+    ? ["no shared channels", `Λ compares the same channels across subjects; these ${c.n_subjects} subjects' montages have ${c.common_channels ?? 0} channel names in common.`]
+    : ["needs 2+ subjects", "Upload several subjects to measure cohort identifiability."];
   const lam = c.lambda_in != null
     ? kpi("Trait Leakage Index Λ", c.lambda_in, c.lambda_out, `Cohort identifiability of band-power features · ${c.n_subjects} subjects`)
-    : `<div class="panel kpi"><div class="k"><span>Trait Leakage Index Λ</span></div><div class="v"><span class="b" style="font-size:18px;color:var(--text-3)">needs 2+ subjects</span></div><div class="s">Upload several subjects to measure cohort identifiability.</div></div>`;
+    : `<div class="panel kpi"><div class="k"><span>Trait Leakage Index Λ</span></div><div class="v"><span class="b" style="font-size:18px;color:var(--text-3)">${lamHead}</span></div><div class="s">${esc(lamSub)}</div></div>`;
+  const spatialOff = r.spatial_alpha === 0;
   $("kpis").innerHTML = [
     kpi("θ/β biomarker deviation", dIn, dOut, `|log θ/β − reference|; reference ${fmtNum(ref, 2)}`),
-    kpi("Spatial fingerprint", r.fingerprint_in, r.fingerprint_out, "Distance of band correlations from the reference"),
+    kpi("Spatial fingerprint", r.fingerprint_in, r.fingerprint_out, spatialOff
+      ? `Spatial alignment was ${r.spatial_alpha_auto ? "off (auto, normative reference)" : "set to 0"}, so channel relationships are kept as recorded`
+      : "Distance of band correlations from the reference"),
     lam,
-    kpi("Signal fidelity", null, r.fidelity_mean, `Mean channel correlation with the input · min ${fmtNum(r.fidelity_min, 2)}`, { better: "higher", single: true, max: 1 }),
+    kpi("Brain dynamics kept", null, r.dynamics_mean ?? r.fidelity_mean,
+      `Within-band correlation with the input on clean signal · waveform similarity ${fmtNum(r.fidelity_mean, 2)}`,
+      { better: "higher", single: true, max: 1 }),
   ].join("");
 }
 
@@ -350,12 +385,14 @@ function renderReport() {
     html += `<div class="label" style="margin:6px 0 8px">θ/β per subject (log, common channels)</div><div class="table-wrap"><table class="data"><thead><tr><th>Subject</th><th class="num">Input</th><th class="num">SANE output</th><th class="num">Change</th></tr></thead><tbody>` +
       Object.keys(c.theta_beta_in).map((s) => `<tr><td class="mono">${esc(s)}</td><td class="num" style="color:var(--in)">${fmtNum(c.theta_beta_in[s])}</td><td class="num" style="color:var(--out)">${fmtNum(c.theta_beta_out[s])}</td><td class="num">${fmtNum(c.theta_beta_out[s] - c.theta_beta_in[s])}</td></tr>`).join("") + `</tbody></table></div>`;
   }
-  html += `<div class="label" style="margin:18px 0 8px">Recordings</div><div class="table-wrap"><table class="data"><thead><tr><th>File</th><th>Reference</th><th class="num">Fit windows</th><th class="num">Fingerprint</th><th class="num">Power deviation</th><th class="num">Fidelity</th><th class="num">Events</th><th>Output</th></tr></thead><tbody>` +
+  html += `<div class="label" style="margin:18px 0 8px">Recordings</div><div class="table-wrap"><table class="data"><thead><tr><th>File</th><th>Reference</th><th class="num">Fit windows</th><th class="num">Fingerprint</th><th class="num">Power deviation</th><th class="num">Dynamics kept</th><th class="num">Waveform</th><th class="num">Events</th><th>Output</th></tr></thead><tbody>` +
     rep.recordings.map((r) => `<tr><td class="file">${esc(r.file)}</td><td>${esc(r.reference)}${r.reference === "cohort" ? ` · ${(r.coverage * 100).toFixed(0)}% covered` : ""}</td>
       <td class="num">${(r.fit_windows_kept * 100).toFixed(0)}%</td><td class="num">${fmtNum(r.fingerprint_in)} → ${fmtNum(r.fingerprint_out)}</td>
-      <td class="num">${fmtNum(r.power_dev_in)} → ${fmtNum(r.power_dev_out)}</td><td class="num">${fmtNum(r.fidelity_mean)}</td><td class="num">${r.events}</td>
+      <td class="num">${fmtNum(r.power_dev_in)} → ${fmtNum(r.power_dev_out)}</td>
+      <td class="num" title="${esc(Object.entries(r.dynamics_bands || {}).map(([b, v]) => `${b} ${fmtNum(v, 3)}`).join(" · "))}">${fmtNum(r.dynamics_mean)}</td>
+      <td class="num">${fmtNum(r.fidelity_mean)}</td><td class="num">${r.events}</td>
       <td class="mono" style="font-size:12px">${r.outputs.map(esc).join("<br>")}</td></tr>`).join("") + `</tbody></table></div>`;
-  html += `<div class="scope"><b>Scope.</b> SANE neutralizes subject-level spectral and spatial biomarkers, the per-channel band-power profile and the per-band channel covariance. Trial-level dynamics, events and auxiliary channels are preserved. Windows with saturation, spikes or flat signal are excluded from fitting (“Fit windows”). SANE is not a complete anonymization method: individual traits outside these statistics, such as alpha peak frequency, can remain.</div>
+  html += `<div class="scope"><b>Scope.</b> SANE neutralizes subject-level spectral and spatial biomarkers, the per-channel band-power profile and the per-band channel covariance. Trial-level dynamics, events and auxiliary channels are preserved. Windows with saturation, spikes or flat signal are excluded from fitting (“Fit windows”) and from the fidelity scores. “Dynamics kept” is the within-band correlation of each channel with its input; it ignores the intended rescaling of bands and drops only when channels are remixed by spatial alignment. SANE is not a complete anonymization method: individual traits outside these statistics, such as alpha peak frequency, can remain.</div>
     <div style="margin-top:14px"><button class="btn" id="exportReport">Export report (JSON)</button></div>`;
   $("reportBody").innerHTML = html;
   $("exportReport").onclick = () => {
