@@ -202,6 +202,8 @@ def ot_map(S, Rref, rtol=1e-6, max_gain=10.0):
     C = S.shape[0]
     w, V = np.linalg.eigh(_sym(S))
     keep = w > rtol * w.max()
+    if w.max() <= 0 or not keep.any():          # no signal in this band: nothing to align
+        return np.eye(C)
     U, d = V[:, keep], w[keep]
     Rk = _sym(U.T @ Rref @ U)
     wr, Vr = np.linalg.eigh(Rk)

@@ -55,7 +55,14 @@ Each session produces before/after measurements:
 
 ## Supported files
 
-EDF/EDF+, BDF (Biosemi), BrainVision (`.vhdr` + `.vmrk` + `.eeg`), EEGLAB (`.set`, with or without `.fdt`) and FIF. You get back the same format. EDF, BDF and BrainVision outputs are made by editing your uploaded file, so only the EEG samples change. Header fields (labels, units, filters, sampling rates) are kept, apart from the personal fields you choose to strip and the physical range of processed channels. Every marker is kept, and every non-EEG channel stays bit-identical. EEGLAB and FIF are rewritten with MNE. Each format was tested end to end on public OpenNeuro recordings (`tests/test_downloaded.py`).
+EDF/EDF+, BDF (Biosemi), BrainVision (`.vhdr` + `.vmrk` + `.eeg`), EEGLAB (`.set`, with or without `.fdt`) and FIF. You get back the same format. EDF, BDF and BrainVision outputs are made by editing your uploaded file, so only the EEG samples change. Header fields (labels, units, filters, sampling rates) are kept, apart from the personal fields you choose to strip and the physical range of processed channels. Every marker is kept, and every non-EEG channel stays bit-identical. EEGLAB and FIF are rewritten with MNE. EEGLAB keeps the uploaded layout (`.set` alone, or `.set` + `.fdt`) and is saved compressed, so a compressed upload does not come back many times larger. Each format was tested end to end on public OpenNeuro recordings (`tests/test_downloaded.py`), including a blind round of randomly chosen datasets.
+
+What happens with unusual files:
+
+- **Missing samples (NaN)** are left out of the fit, bridged for filtering, and still marked missing in the output.
+- **Channels that are not scalp EEG** stay untouched. This covers channels typed as EOG/ECG/EMG/stim/misc, names like EOG, ECG or Trigger, non-voltage units (nS, nA, degrees), and, in a 10-05 montage, names that are no electrode (lane position, steering, audio). Flat channels also stay untouched.
+- **Split FIF recordings** (`_split-01`, `_split-02`, or `raw-1.fif`) are read as one recording when all parts are uploaded together.
+- **Files that cannot be processed are refused with the reason**: MEG-only FIF, EyeLink eye-tracker `.edf` files, DataLad/Git LFS placeholders, cut-off BrainVision data files, physically impossible values, recordings whose scalp EEG is all flat, and lone parts of split recordings.
 
 On a real depression dataset (OpenNeuro ds003478, three subjects), SANE cut between-subject θ/β variance by more than 99.99% and lowered Λ from 0.51 to 0.008, while each output channel kept a 0.98 correlation with its input.
 

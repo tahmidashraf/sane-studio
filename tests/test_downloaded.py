@@ -63,7 +63,9 @@ def theta_beta(raw):
     X = raw.get_data(picks=eeg).astype(np.float32)
     fs = raw.info["sfreq"]
     bands = E.active_bands(fs)
-    P = E.welch_stats(X, fs, bands, keep=E.artifact_mask(X, fs))["P"]
+    gaps = ~np.isfinite(X).all(0)                  # missing samples are left out, not measured
+    X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    P = E.welch_stats(X, fs, bands, keep=E.artifact_mask(X, fs, gaps))["P"]
     return float(np.log(P[:, 1].mean() / P[:, 3].mean()))
 
 
@@ -122,14 +124,22 @@ def check(original_header, out_dir, rec, report_row):
     worst = 0.0
     for i in passthrough:
         x, y = src.get_data(picks=[i])[0, :n], out.get_data(picks=[i])[0, :n]
-        rng = max(np.ptp(x), 1e-30)
-        worst = max(worst, float(np.max(np.abs(x - y)) / rng))
+        if not np.array_equal(np.isnan(x), np.isnan(y)):
+            issues.append(f"pass-through channel {src.ch_names[i]}: missing samples moved")
+        rng = max(np.nanmax(x) - np.nanmin(x), 1e-30) if np.isfinite(x).any() else 1.0
+        worst = max(worst, float(np.nanmax(np.abs(x - y), initial=0.0) / rng))
     if worst > 1e-3:
         issues.append(f"pass-through channel changed ({worst:.1e} of range)")
+    xs, ys = src.get_data(picks=eeg)[:, :n], out.get_data(picks=eeg)[:, :n]
+    if not np.array_equal(np.isnan(xs), np.isnan(ys)):
+        issues.append(f"missing EEG samples not preserved ({int(np.isnan(xs).sum())} in, {int(np.isnan(ys).sum())} out)")
+    del xs, ys
     issues += header_checks(original_header, header, passthrough)
     tb_in, tb_out = theta_beta(src), theta_beta(out)
     target = report_row["biomarkers_ref"]["theta_beta"]
-    if report_row["reference"] != "cohort" or report_row["reference_subjects"] > 1:
+    if not np.isfinite([tb_in, tb_out]).all():
+        issues.append("theta/beta could not be measured")
+    elif report_row["reference"] != "cohort" or report_row["reference_subjects"] > 1:
         if abs(tb_out - target) > 0.1 and abs(tb_out - target) > 0.25 * abs(tb_in - target):
             issues.append(f"theta/beta not neutralized ({tb_out:+.2f} vs target {target:+.2f})")
     return issues, {

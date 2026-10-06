@@ -7,8 +7,12 @@ EEGLAB (.set, optionally + .fdt), and MNE/Neuromag FIF (.fif, .fif.gz).
 from __future__ import annotations
 
 import re
+import threading
+import warnings
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
+from unittest.mock import patch
 
 import mne
 import numpy as np
@@ -25,6 +29,9 @@ FORMAT_LABEL = {"edf": "EDF", "bdf": "BDF", "brainvision": "BrainVision",
 NON_EEG_NAME = re.compile(
     r"(EOG|ECG|EKG|EMG|STATUS|TRIG|^STI|STIM|RESP|GSR|EDA|PULSE|PLET|SPO2|SAO2|ACC|GYRO|"
     r"PHOTIC|MARKER|EVENT|AUX|EXG|THERM|TEMP|BREATH|SNORE|LIGHT|^ERG|^ANA\d|^[XYZ]\d*$|^BIP|^MISC)")
+# Electrodes that record EEG but are missing from MNE's 10-05 list: cerebellar (Neuroscan
+# 64-channel caps), anterior temporal, inferior occipital, nasion, sphenoidal, nasopharyngeal.
+EXTRA_ELECTRODES = {"CB1", "CB2", "CBZ", "T1", "T2", "O9", "O10", "NZ", "SP1", "SP2", "PG1", "PG2"}
 # Units a scalp EEG channel can be stored in; anything else (nS, degC, bpm, Boolean...) is a sensor.
 VOLT_SCALE = {"v": 1.0, "mv": 1e3, "uv": 1e6, "nv": 1e9}
 
@@ -102,10 +109,26 @@ def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
     headers = sorted([p for p in paths if _ext(p) in HEADER_EXT
                       and not (_ext(p) == ".gz" and not p.name.lower().endswith(".fif.gz"))],
                      key=lambda p: p.name.lower())
+    # later parts of a split FIF recording belong to its first part (MNE reads them through it)
+    split_groups = {}
+    for p in headers:
+        part = _split_part(p.name) if _ext(p) == ".fif" else None
+        if part:
+            split_groups.setdefault(part[0], []).append((part[1], p))
+    later = {}
+    for parts in split_groups.values():
+        parts.sort(key=lambda x: x[0])
+        if len(parts) > 1 and parts[0][0] == 1:
+            later[parts[0][1]] = [p for _, p in parts[1:]]
+    continuation = {p for ps in later.values() for p in ps}
+    headers = [h for h in headers if h not in continuation]
     for i, h in enumerate(headers):
         fmt = HEADER_EXT[_ext(h)]
         spec = RecordingSpec(rid=f"r{i + 1}", fmt=fmt, header=h)
         claimed.add(h.name.lower())
+        for p in later.get(h, []):
+            spec.companions.append(p)
+            claimed.add(p.name.lower())
         if fmt == "brainvision":
             refs = _vhdr_refs(h)
             for kind, ext in (("datafile", ".eeg"), ("markerfile", ".vmrk")):
@@ -138,13 +161,58 @@ def group_uploads(paths: list[Path]) -> tuple[list[RecordingSpec], list[str]]:
     return specs, notes
 
 
-def read(spec: RecordingSpec, preload: bool = True):
-    """Read a recording with MNE. Epoched files raise a clear error."""
+def _split_part(name):
+    """(group key, part number) for split FIF files, else None.
+
+    BIDS names parts `..._split-01_meg.fif`, `..._split-02_meg.fif`; MNE names them
+    `x_raw.fif`, `x_raw-1.fif`, `x_raw-2.fif`.
+    """
+    low = name.lower()
+    if not low.endswith(".fif"):
+        return None
+    m = re.match(r"^(.*_split-)(\d+)(_.*\.fif)$", low)
+    if m:
+        return (m.group(1), m.group(3)), int(m.group(2))
+    m = re.match(r"^(.*(?:raw|meg|eeg|sss))-(\d+)\.fif$", low)
+    if m:
+        return (m.group(1), ".fif"), int(m.group(2)) + 1
+    return (low[:-4], ".fif"), 1
+
+
+def _check_integrity(spec):
+    """Problems MNE would read straight past: other formats sharing an extension,
+    lone parts of split recordings, cut-off data files."""
+    head = spec.header.read_bytes()[:256]
     if spec.header.stat().st_size < 2048 and spec.fmt in ("edf", "bdf", "fif"):
-        head = spec.header.read_bytes()[:200]
         if b"annex/objects" in head or b"git-lfs" in head or b"version https://" in head:
             raise ValueError("this is a placeholder from DataLad/git-annex or Git LFS, not the recording; "
                              "fetch the real file first (e.g. `datalad get`)")
+    if spec.fmt == "edf" and head.startswith(b"SR_RESEARCH"):
+        raise ValueError("this is an EyeLink eye-tracker file (SR Research), which also uses the .edf "
+                         "extension; it holds eye movements, not EEG")
+    if spec.fmt == "fif":
+        part = _split_part(spec.header.name)
+        if part and part[1] > 1 and not spec.companions:
+            raise ValueError(f"this is part {part[1]} of a recording split across several .fif files; "
+                             "upload all parts together, including the first")
+    if spec.fmt == "brainvision":
+        text = _read_text(spec.header)
+        eeg_file = next((c for c in spec.companions if c.suffix.lower() == ".eeg"), None)
+        fmt = (_vhdr_value(text, "Binary Infos", "BinaryFormat") or "INT_16").upper()
+        width = {"INT_16": 2, "UINT_16": 2, "INT_32": 4, "IEEE_FLOAT_32": 4}.get(fmt)
+        try:
+            nch = int(_vhdr_value(text, "Common Infos", "NumberOfChannels"))
+        except (TypeError, ValueError):
+            nch = 0
+        if eeg_file is not None and width and nch and eeg_file.stat().st_size % (width * nch):
+            raise ValueError(f"the data file {eeg_file.name} is incomplete: its size is not a whole number of "
+                             f"samples for {nch} channels in {fmt}, so it was probably cut off while it was "
+                             "being copied or downloaded")
+
+
+def read(spec: RecordingSpec, preload: bool = True):
+    """Read a recording with MNE. Epoched files raise a clear error."""
+    _check_integrity(spec)
     try:
         return mne.io.read_raw(spec.header, preload=preload, verbose="ERROR")
     except Exception as exc:  # noqa: BLE001 - surface MNE's reason to the user
@@ -158,6 +226,16 @@ def read(spec: RecordingSpec, preload: bool = True):
             raise ValueError(f"{spec.header.name} is not a valid {FORMAT_LABEL[spec.fmt]} file "
                              "(the header could not be parsed; the file may be truncated or corrupted)") from exc
         raise ValueError(f"could not read {spec.header.name}: {msg}") from exc
+
+
+def channel_summary(raw):
+    """'306 MEG, 9 stim' style count of a recording's channel types."""
+    from collections import Counter
+
+    label = {"mag": "MEG", "grad": "MEG", "eeg": "EEG", "eog": "EOG", "ecg": "ECG", "emg": "EMG", "stim": "stim",
+             "misc": "misc", "bio": "bio", "resp": "respiration"}
+    counts = Counter(label.get(t, t) for t in raw.get_channel_types())
+    return ", ".join(f"{n} {k}" for k, n in counts.most_common())
 
 
 def classify_channels(raw, sample_seconds: float = 60.0):
@@ -182,8 +260,27 @@ def classify_channels(raw, sample_seconds: float = 60.0):
             eeg.append(i)
             continue
         passthrough.append(i)
+    # When the montage is named in 10-05 terms, an "EEG" channel whose name is no electrode
+    # is a sensor recorded alongside it (lane position, steering, speed, ...), not scalp EEG.
+    if len(eeg) >= 4:
+        std = _montage_lookup("standard_1005")
+        known = [_label_key(raw.ch_names[i]) in std or _label_key(raw.ch_names[i]) in EXTRA_ELECTRODES
+                 for i in eeg]
+        if sum(known) >= 0.8 * len(eeg):
+            odd = [i for i, k in zip(eeg, known) if not k]
+            for i in odd:
+                reasons[raw.ch_names[i]] = "not a scalp electrode name (the other EEG channels use 10-05 names)"
+            eeg = [i for i in eeg if i not in odd]
+            passthrough = sorted(passthrough + odd)
     if eeg and raw.preload:
-        sd = raw._data[eeg, :n].std(1)
+        # flat only if flat everywhere: six stretches spread over the whole recording, so
+        # a silent start (amplifier settling) does not count; missing samples are ignored
+        N, seg = raw.n_times, max(1, n // 6)
+        with np.errstate(all="ignore"), warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)          # all-missing stretches
+            sds = np.vstack([np.nanstd(raw._data[eeg, a:a + seg], axis=1)
+                             for a in np.linspace(0, max(0, N - seg), 6).astype(int)])
+            sd = np.nan_to_num(np.nanmax(sds, axis=0), nan=0.0)
         flat = [eeg[k] for k in np.nonzero(sd < 1e-10)[0]]
         for i in flat:
             reasons[raw.ch_names[i]] = "flat signal"
@@ -212,6 +309,7 @@ _MONTAGES = (["standard_1005"]
              + [f"GSN-HydroCel-{n}" for n in ("32", "64_1", "65_1", "128", "129", "256", "257")])
 
 
+@lru_cache(maxsize=None)
 def _montage_lookup(name):
     try:
         ch_pos = mne.channels.make_standard_montage(name).get_positions()["ch_pos"]
@@ -395,7 +493,8 @@ def write(raw, spec: RecordingSpec, out_dir: Path, suffix: str = "_sane",
     spec.writer = "MNE export"
     if spec.fmt == "fif":
         raw.save(path, overwrite=True, verbose="ERROR")
-        return [path]
+        # MNE splits files over 2 GB into path-1.fif, path-2.fif, ...
+        return [path] + sorted(out_dir.glob(f"{path.stem}-*.fif"))
     if spec.fmt in ("edf", "bdf"):
         mne.export.export_raw(path, raw, fmt=spec.fmt, physical_range="channelwise",
                               overwrite=True, verbose="ERROR")
@@ -404,9 +503,47 @@ def write(raw, spec: RecordingSpec, out_dir: Path, suffix: str = "_sane",
         mne.export.export_raw(path, raw, fmt="brainvision", overwrite=True, verbose="ERROR")
         return [path, path.with_suffix(".vmrk"), path.with_suffix(".eeg")]
     if spec.fmt == "eeglab":
-        mne.export.export_raw(path, raw, fmt="eeglab", overwrite=True, verbose="ERROR")
-        return [p for p in (path, path.with_suffix(".fdt")) if p.exists()]
+        return _write_eeglab(raw, spec, path)
     raise ValueError(f"unsupported format {spec.fmt}")
+
+
+_EEGLAB_LOCK = threading.Lock()
+V5_LIMIT_BYTES = 1_900_000_000          # MATLAB v5 files hold at most 2 GB per variable
+
+
+def _write_eeglab(raw, spec, path):
+    """EEGLAB output in the uploaded layout, sized like the upload.
+
+    MNE builds the EEGLAB structure (channels, locations, events) through eeglabio; the
+    saving is done here. A .set + .fdt upload gets .set + .fdt back (raw float32 samples
+    in the .fdt, no size limit). A single .set is written compressed, like MATLAB's own
+    -v7 files, unless the data exceed the 2 GB per-variable limit of that format; then
+    it is split into .set + .fdt as well and a note says so.
+    """
+    import eeglabio.raw
+    from scipy.io import savemat
+
+    two_files = any(c.suffix.lower() == ".fdt" for c in spec.companions)
+    written = []
+
+    def save(fname, eeg):
+        data = np.asarray(eeg["data"], dtype=np.float32)
+        nonlocal two_files
+        if not two_files and data.nbytes > V5_LIMIT_BYTES:
+            two_files = True
+            spec.warnings.append("The data exceed the 2 GB limit of a single MATLAB file, so they were "
+                                 "written as .set + .fdt, which EEGLAB opens the same way.")
+        if two_files:
+            fdt = Path(fname).with_suffix(".fdt")
+            data.T.tofile(fdt)               # EEGLAB .fdt: float32, channels vary fastest
+            eeg["data"] = fdt.name
+            eeg["datfile"] = fdt.name
+            written.append(fdt)
+        savemat(fname, eeg, appendmat=False, do_compression=True)
+
+    with _EEGLAB_LOCK, patch.object(eeglabio.raw, "_get_savemat", lambda fmt: save):
+        mne.export.export_raw(path, raw, fmt="eeglab", overwrite=True, verbose="ERROR")
+    return [path, *written]
 
 
 def suggest_subject(spec: RecordingSpec) -> str:

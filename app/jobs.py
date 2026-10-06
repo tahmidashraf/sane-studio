@@ -88,7 +88,9 @@ class Job:
                             "n_events": len(raw.annotations),
                             "passthrough": [{"name": n, "reason": r} for n, r in why.items()]})
                 if len(eeg) < 2:
-                    rec.update(status="error", message="fewer than two EEG channels were found")
+                    found = "one scalp EEG channel" if eeg else "no scalp EEG"
+                    rec.update(status="error", message=f"{found} found; this file has {F.channel_summary(raw)} "
+                                                       "channels, and SANE needs at least two EEG channels")
                 elif raw.n_times / raw.info["sfreq"] < E.MIN_DURATION_S:
                     rec.update(status="error", message=f"recording is shorter than {E.MIN_DURATION_S:.0f} s")
             except Exception as exc:  # noqa: BLE001
@@ -142,7 +144,8 @@ class Job:
             except Exception as exc:  # noqa: BLE001
                 self._fail(spec, f"could not be analyzed: {exc}")
         if not info:
-            raise ValueError("none of the recordings could be processed")
+            raise ValueError("none of the recordings could be processed. "
+                             + " ".join(f"{s.header.name} {self.recordings[s.rid]['message']}." for s in specs))
         specs = [s for s in specs if s.rid in info]
 
         # 2. reference and operators (one unit per subject x montage x sampling rate)
@@ -160,7 +163,8 @@ class Job:
                 self._fail(spec, f"could not be written: {exc}")
                 info.pop(spec.rid)
         if not info:
-            raise ValueError("none of the recordings could be written")
+            raise ValueError("none of the recordings could be written. "
+                             + " ".join(f"{s.header.name} {self.recordings[s.rid]['message']}." for s in specs))
 
         # 4. report and packages
         self.set_stage("Building the privacy report", 0.92)
@@ -183,7 +187,11 @@ class Job:
         raw = F.read(spec, preload=True)
         eeg, passthrough, why = F.classify_channels(raw)
         if len(eeg) < 2:
-            raise ValueError("fewer than two EEG channels")
+            from collections import Counter
+            counts = ", ".join(f"{n} {r}" for r, n in Counter(why.values()).most_common())
+            hint = (" (the scalp EEG in this file contains no signal)"
+                    if any(r == "flat signal" for r in why.values()) else "")
+            raise ValueError(f"no usable scalp EEG{hint}; channels set aside: {counts}")
         fs, N = float(raw.info["sfreq"]), int(raw.n_times)
         x_in = np.lib.format.open_memmap(self._path(spec.rid, "in.npy"), "w+", np.float32, (int(len(eeg)), N))
         aux_idx = [i for i in passthrough if raw.get_channel_types([i])[0] not in ("stim",)]
@@ -195,7 +203,8 @@ class Job:
                 aux[:, a:a + CHUNK] = raw.get_data(picks=aux_idx, start=a, stop=min(N, a + CHUNK))
         x_in.flush()
         aux.flush()
-        keep = E.artifact_mask(x_in, fs, F.bad_sample_mask(raw))
+        gaps = self._bridge_gaps(spec, x_in)
+        keep = E.artifact_mask(x_in, fs, F.bad_sample_mask(raw) | gaps)
         st = E.welch_stats(x_in, fs, bands, keep=keep)
         np.save(self._path(spec.rid, "csd.npy"), st["csd"])
         ann = [{"t": round(float(a["onset"] - raw.first_time), 4), "d": round(float(a["duration"]), 4),
@@ -205,7 +214,40 @@ class Job:
             aux_names=[raw.ch_names[i] for i in aux_idx], fs=fs, N=N, keep=keep, st=st,
             pos=F.electrode_positions(raw, eeg), ann=ann, n_events=len(raw.annotations),
             subject=str(subjects.get(spec.rid) or self.recordings[spec.rid]["subject"]),
-            avg_ref=E.is_average_referenced(st["R"].sum(0)))
+            avg_ref=E.is_average_referenced(st["R"].sum(0)), gap_samples=int(gaps.sum()))
+
+    def _bridge_gaps(self, spec, x):
+        """Missing samples (NaN/inf) are bridged by linear interpolation so filtering stays
+        smooth; their positions are saved so the output keeps them missing. Physically
+        impossible values mean the file is damaged and stop the recording."""
+        C, N = x.shape
+        gaps = np.zeros(N, bool)
+        holes = None                                    # per-channel gap positions, bit-packed
+        biggest = 0.0
+        for c in range(C):
+            row = np.asarray(x[c], dtype=np.float64)
+            bad = ~np.isfinite(row)
+            if bad.all():
+                raise ValueError(f"EEG channel {c + 1} contains no valid samples")
+            ok_vals = np.abs(row[~bad])
+            biggest = max(biggest, float(np.percentile(ok_vals, 99)))
+            if bad.any():
+                idx = np.arange(N)
+                row[bad] = np.interp(idx[bad], idx[~bad], row[~bad])
+                x[c] = row
+                if holes is None:
+                    holes = np.zeros((C, (N + 7) // 8), np.uint8)
+                holes[c] = np.packbits(bad)
+                gaps |= bad
+        # Even DC-coupled amplifiers stay within about 0.5 V; beyond 1 V on 1% of the
+        # samples the numbers are not voltages (wrong sample format or corrupted data).
+        if biggest > 1.0:
+            raise ValueError(f"the EEG values are physically impossible (1% of samples exceed {biggest:.3g} V); "
+                             "the data file is damaged or its header describes the wrong sample format")
+        if holes is not None:
+            x.flush()
+            np.save(self._path(spec.rid, "holes.npy"), holes)
+        return gaps
 
     def _operators(self, info, bands, alpha, reference, spatial):
         groups = {}
@@ -243,6 +285,10 @@ class Job:
         raw = F.read(spec, preload=True)
         for a in range(0, d["N"], CHUNK):
             raw._data[d["eeg"], a:a + CHUNK] = x_out[:, a:a + CHUNK]
+        if d.get("gap_samples"):                        # missing in the input stays missing
+            holes = np.load(self._path(spec.rid, "holes.npy"))
+            for c, ch in enumerate(d["eeg"]):
+                raw._data[ch, np.unpackbits(holes[c], count=d["N"]).astype(bool)] = np.nan
         if spec.fmt == "fif":
             raw.info["description"] = (f"Processed by SANE (alpha={alpha}, reference={op['mode']}); "
                                        "subject-level spectral and spatial biomarkers neutralized.")
@@ -287,7 +333,11 @@ class Job:
                 "spatial_alpha_auto": self.params.get("spatial_alpha") is None,
                 "events": d["n_events"], "out_of_band_preserved": preserve_oob,
                 "writer": d["spec"].writer,
-                "notes": list(d["spec"].warnings) + ([_fallback_note(op["coverage"])] if op.get("cohort_fallback") else []),
+                "notes": list(d["spec"].warnings)
+                + ([_fallback_note(op["coverage"])] if op.get("cohort_fallback") else [])
+                + ([f"The recording has {d['gap_samples'] / d['fs']:.1f} s of missing samples (NaN). They were "
+                    "bridged for processing, left out of the fit, and are still marked missing in the output."]
+                   if d.get("gap_samples") else []),
                 "outputs": [f.name for f in d["files"]]})
             cohort_units.append(dict(subject=d["subject"], ch_names=d["ch_names"], P_in=P_in, P_out=P_out,
                                      feats_in=d["st"]["feats"], feats_out=d["st_out"]["feats"]))
