@@ -74,6 +74,7 @@ button, input, select { font: inherit; color: inherit; }
   background: var(--surface); color: var(--text); font-weight: 500; cursor: pointer;
   transition: background .15s, border-color .15s, transform .05s; white-space: nowrap; }
 .btn:hover { background: var(--surface-3); }
+a.btn { text-decoration: none; }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--text); color: var(--surface); border-color: var(--text); }
 .btn.primary:hover { background: color-mix(in srgb, var(--text) 86%, var(--out)); }
@@ -205,6 +206,8 @@ details.pass-list summary:focus-visible { outline: 2px solid var(--out); outline
   background: var(--surface-2); font-family: var(--mono); font-size: 11.5px; line-height: 1.55; }
 table.rec-table { min-width: 860px; }          /* narrow screens scroll the table, not squeeze names */
 table.rec-table td:first-child { min-width: 240px; }
+table.report-table { min-width: 980px; }
+table.report-table td:first-child { min-width: 210px; }
 table.data tr.rejected td { vertical-align: top; }
 table.data tr.rejected .file { color: var(--text-2); }
 .muted { color: var(--text-3); }
@@ -271,7 +274,10 @@ table.data tr.rejected .file { color: var(--text-2); }
 .plots.single { grid-template-columns: 1fr; }
 .plot { position: relative; border-right: 1px solid var(--line); min-width: 0; }
 .plot:last-child { border-right: 0; }
-.plot .cap { position: absolute; top: 8px; right: 12px; z-index: 2; pointer-events: none; }
+.plot .cap { position: absolute; top: 8px; right: 12px; z-index: 2; pointer-events: none; background-color: var(--surface); }
+/* opaque labels: the tint sits on the surface, so traces never show through the text */
+.plot .cap.in { background: linear-gradient(var(--in-soft), var(--in-soft)), var(--surface); }
+.plot .cap.out { background: linear-gradient(var(--out-soft), var(--out-soft)), var(--surface); }
 .plot canvas { display: block; width: 100%; }
 .readout { position: absolute; z-index: 3; pointer-events: none; padding: 6px 9px; border-radius: 7px; font: 11.5px var(--mono);
   background: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow); white-space: nowrap; }

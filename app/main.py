@@ -40,7 +40,7 @@ app.mount("/static", StaticFiles(directory=WEB), name="static")
 async def revalidate_assets(request, call_next):
     """Browsers revalidate the UI on every load, so a deploy is visible immediately."""
     response = await call_next(request)
-    if request.url.path == "/" or request.url.path.startswith("/static/"):
+    if request.url.path in ("/", "/manual") or request.url.path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
 
@@ -80,6 +80,11 @@ def _safe_name(name: str) -> str:
 @app.get("/", include_in_schema=False)
 def index():
     return FileResponse(WEB / "index.html")
+
+
+@app.get("/manual", include_in_schema=False)
+def manual():
+    return FileResponse(WEB / "manual.html")
 
 
 @app.get("/api/health")
