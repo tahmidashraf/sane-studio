@@ -21,7 +21,7 @@ SANE Studio removes subject-level neurological biomarkers from EEG recordings an
 | EDF / EDF+ | `.edf` | `.edf` |
 | BDF / BDF+ (Biosemi) | `.bdf` | `.bdf` |
 | BrainVision | `.vhdr` + `.vmrk` + `.eeg` | `.vhdr` + `.vmrk` + `.eeg` (zip) |
-| EEGLAB | `.set`, with `.fdt` if present | `.set` |
+| EEGLAB | `.set`, with `.fdt` if present | `.set`, plus `.fdt` if you uploaded one |
 | MNE / Neuromag FIF | `.fif`, `.fif.gz` | `.fif` |
 
 Drop several files, or a whole folder, at once. Companion files are matched to their header automatically, and recordings in different formats can share one session.
@@ -76,12 +76,28 @@ SANE neutralizes subject-level spectral and spatial biomarkers. It is not a comp
 
 ## Run locally
 
+Needs Python 3.10 or newer. From the project folder:
+
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --port 8000
+python -m uvicorn app.main:app --port 8000
 ```
 
-Then open http://localhost:8000. The API is documented at `/api/docs`.
+Then open http://localhost:8000. The API is documented at `/api/docs`. Stop the server with Ctrl+C.
+
+Sessions are stored in the system temp folder unless `SANE_DATA_DIR` points elsewhere. A session can take several GB, so on Windows with a small C: drive, set it first (PowerShell):
+
+```powershell
+$env:SANE_DATA_DIR = "D:\sane_jobs"
+```
+
+Tests (the last two need the server running and the test data on disk):
+
+```bash
+python tests/test_formats.py
+python tests/test_customer_uploads.py
+python tests/test_downloaded.py D:/sane_testdata http://localhost:8000
+```
 
 ## Deploy
 
