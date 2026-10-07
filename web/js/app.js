@@ -115,25 +115,51 @@ function renderConfig() {
   $("recCount").textContent = `${recs.length} recording${recs.length === 1 ? "" : "s"}`;
   $("recTotals").textContent = `${ready.length} ready · ${recs.reduce((s, r) => s + r.size_mb, 0).toFixed(1)} MB`;
   $("recRows").innerHTML = recs.map((r) => {
-    const pass = r.passthrough?.length ? `<div class="pass-list">Pass-through: ${r.passthrough.map((p) => esc(p.name)).join(", ")}</div>` : "";
+    const bad = r.status === "error";
     const comp = r.companions?.length ? `<div class="pass-list">+ ${r.companions.map(esc).join(", ")}</div>` : "";
-    const warn = r.warnings?.length ? `<div class="err-msg">${r.warnings.map(esc).join("; ")}</div>` : "";
-    const status = r.status === "error" ? `<span class="chip err">ERROR</span><div class="err-msg">${esc(r.message)}</div>` : `<span class="chip ok">READY</span>`;
-    return `<tr>
-      <td><div class="file">${esc(r.file)}</div>${comp}${pass}${warn}</td>
+    const warn = r.warnings?.length ? `<div class="warn-msg">${r.warnings.map(esc).join("; ")}</div>` : "";
+    const reason = bad ? `<div class="err-msg"><b>Can't be processed:</b> ${esc(sentence(r.message))}</div>` : "";
+    return `<tr class="${bad ? "rejected" : ""}">
+      <td><div class="file">${esc(r.file).replace(/_/g, "_<wbr>")}</div>${comp}${reason}${bad ? "" : passSummary(r.passthrough)}${warn}</td>
       <td><span class="chip fmt">${esc(r.format)}</span></td>
       <td class="num">${r.n_eeg ?? "—"} / ${r.n_channels ?? "—"}</td>
       <td class="num">${r.fs ? `${+r.fs.toFixed(1)} Hz` : "—"}</td>
       <td class="num">${r.duration_s != null ? fmtT(r.duration_s) : "—"}</td>
       <td class="num">${r.n_events ?? "—"}</td>
-      <td><input class="input sub-in" data-rid="${r.rid}" value="${esc(r.subject)}" ${r.status === "error" ? "disabled" : ""} aria-label="Subject ID for ${esc(r.file)}"></td>
-      <td>${status}</td></tr>`;
+      <td>${bad ? `<span class="muted">—</span>`
+        : `<input class="input sub-in" data-rid="${r.rid}" value="${esc(r.subject)}" aria-label="Subject ID for ${esc(r.file)}">`}</td>
+      <td>${bad ? `<span class="chip err">Skipped</span>` : `<span class="chip ok">Ready</span>`}</td></tr>`;
   }).join("");
   $("uploadNotes").textContent = state.job.notes.join(" ");
   for (const inp of $("recRows").querySelectorAll(".sub-in")) inp.addEventListener("input", refHint);
-  $("runBtn").textContent = `Neutralize ${ready.length} recording${ready.length === 1 ? "" : "s"}`;
+  $("runBtn").textContent = ready.length
+    ? `Neutralize ${ready.length} recording${ready.length === 1 ? "" : "s"}` : "No recordings can be processed";
   $("runBtn").disabled = !ready.length;
   refHint();
+}
+
+// "this is an EyeLink file" -> "This is an EyeLink file."
+const sentence = (s) => { s = String(s || "").trim(); return s && s[0].toUpperCase() + s.slice(1) + (/[.!?]$/.test(s) ? "" : "."); };
+
+// Channels kept unchanged, counted by reason; the full list only on request.
+function passSummary(list) {
+  if (!list?.length) return "";
+  const kind = (reason) => {
+    const m = /^(\w+) channel$/.exec(reason);
+    if (m) return { mag: "MEG", grad: "MEG", eog: "EOG", ecg: "ECG", emg: "EMG", stim: "trigger", misc: "misc" }[m[1]] ?? m[1];
+    if (reason.startsWith("sensor")) return "sensor";
+    if (reason.startsWith("not a scalp electrode")) return "non-electrode";
+    if (reason.startsWith("non-EEG")) return "non-EEG";
+    return reason.replace(" signal", "");
+  };
+  const counts = new Map();
+  for (const p of list) counts.set(kind(p.reason), (counts.get(kind(p.reason)) ?? 0) + 1);
+  const summary = [...counts].map(([k, n]) => `${n} ${k}`).join(", ");
+  if (list.length <= 6) {
+    return `<div class="pass-list">Kept unchanged: ${list.map((p) => `${esc(p.name)} <span class="why">(${esc(kind(p.reason))})</span>`).join(", ")}</div>`;
+  }
+  return `<details class="pass-list"><summary>Kept unchanged: ${esc(summary)} channels</summary>
+    <div class="pass-all">${list.map((p) => esc(p.name)).join(", ")}</div></details>`;
 }
 
 function subjectsMap() {
@@ -143,7 +169,9 @@ function subjectsMap() {
 function refHint() {
   const n = new Set(Object.values(subjectsMap())).size, ref = state.params.reference;
   const cohort = (ref === "auto" || ref === "cohort") && n >= 2;
-  $("refHint").textContent = cohort
+  $("refHint").textContent = n === 0
+    ? "Add a readable EEG recording to choose a reference."
+    : cohort
     ? `${n} subjects detected: each subject is aligned to the cohort average, channel by channel, so the group's typical profile is kept.`
     : ref === "cohort" ? "Cohort needs at least two subjects; the normative reference will be used instead."
     : "Each recording is aligned to a built-in normative profile. Upload several subjects to use a cohort reference.";
