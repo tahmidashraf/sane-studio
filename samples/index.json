@@ -1,0 +1,26 @@
+[
+ {
+  "id": "depression-rest",
+  "title": "Resting EEG, depression study",
+  "detail": "3 subjects, 64 EEG + 2 EOG channels, 250 Hz, EDF. OpenNeuro ds003478 (CC0).",
+  "files": 3,
+  "names": [
+   "sub-002_task-rest_eeg.edf",
+   "sub-003_task-rest_eeg.edf",
+   "sub-004_task-rest_eeg.edf"
+  ],
+  "size_mb": 6.0
+ },
+ {
+  "id": "hd128-motor",
+  "title": "128-channel motor task (synthetic)",
+  "detail": "3 subjects, Biosemi 128 + Status, 256 Hz, BDF. Subject 3 carries an elevated theta biomarker.",
+  "files": 3,
+  "names": [
+   "sub-01_task-motor_eeg.bdf",
+   "sub-02_task-motor_eeg.bdf",
+   "sub-03_task-motor_eeg.bdf"
+  ],
+  "size_mb": 9.0
+ }
+]

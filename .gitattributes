@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.edf binary
+*.bdf binary
+*.fif binary
+*.eeg binary
+*.fdt binary
+*.set binary

@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SANE Studio Manual</title>
+<meta name="description" content="User manual for SANE Studio: every screen, setting, chart and output file, with screenshots.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b8f80'/%3E%3Cpath d='M5 17h4l2.5-7 4 13 3-9 2 3H27' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  try { const t = localStorage.getItem("sane-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<style>
+  .man { display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 44px; max-width: 1240px; margin: 0 auto; padding-block: 30px 90px; }
+  .toc { position: sticky; top: 78px; align-self: start; max-height: calc(100vh - 100px); overflow-y: auto; padding-right: 6px; font-size: 13.5px; }
+  .toc .label { margin-bottom: 10px; }
+  .toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+  .toc a { display: grid; grid-template-columns: 26px 1fr; padding: 5px 8px; border-radius: 6px; color: var(--text-2); text-decoration: none; line-height: 1.35; }
+  .toc a:hover { background: var(--surface-3); color: var(--text); }
+  .toc a:focus-visible { outline: 2px solid var(--out); outline-offset: 1px; }
+  .toc a span { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); padding-top: 1px; }
+
+  .doc { max-width: 900px; min-width: 0; }
+  .doc .cover { padding-bottom: 26px; border-bottom: 1px solid var(--line); }
+  .doc .cover h1 { font-size: clamp(30px, 4vw, 42px); line-height: 1.12; letter-spacing: -.015em; margin: 6px 0 12px; text-wrap: balance; }
+  .doc .cover p { font-size: 17px; }
+  .doc .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .doc h2 { font-size: 25px; line-height: 1.25; margin: 58px 0 12px; padding-top: 18px; border-top: 1px solid var(--line); text-wrap: balance; scroll-margin-top: 80px; }
+  .doc .cover + h2 { border-top: 0; margin-top: 30px; }
+  table.opt.plain td:first-child { font-weight: 400; color: var(--text-2); }
+  .doc h2 .num { font-family: var(--mono); font-size: 15px; color: var(--out); margin-right: 12px; vertical-align: 3px; }
+  .doc h3 { font-size: 18px; margin: 32px 0 8px; scroll-margin-top: 80px; }
+  .doc h4 { font-size: 15px; margin: 22px 0 6px; }
+  .doc p, .doc li, .doc dd { line-height: 1.68; color: var(--text-2); max-width: 74ch; }
+  .doc p { margin: 10px 0; }
+  .doc ul, .doc ol { padding-left: 22px; margin: 8px 0 12px; }
+  .doc li { margin: 4px 0; }
+  .doc strong, .doc .ui { color: var(--text); font-weight: 600; }
+  .doc code { font-family: var(--mono); font-size: .9em; padding: 1px 5px; border-radius: 5px; background: var(--surface-3); color: var(--text); overflow-wrap: anywhere; }
+  .doc pre { font-family: var(--mono); font-size: 13px; padding: 12px 14px; border-radius: 9px; background: var(--surface-3); color: var(--text); overflow-x: auto; line-height: 1.55; }
+  .doc a { color: var(--out); }
+  kbd { font-family: var(--mono); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 5px; background: var(--surface); color: var(--text); }
+
+  figure.shot { margin: 18px 0 26px; }
+  figure.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  figure.shot.narrow img { max-width: 380px; }
+  figure.shot.mid img { max-width: 620px; }
+  figure.shot figcaption { font-size: 13px; color: var(--text-3); margin-top: 8px; line-height: 1.5; max-width: 80ch; }
+  figure.shot figcaption b { color: var(--text-2); font-weight: 600; }
+  .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0 26px; }
+  .gallery figure.shot { margin: 0; }
+  .side { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 28px; align-items: start; margin: 18px 0 26px; }
+  .side figure.shot { margin: 0; }
+
+  .table-wrap { margin: 14px 0 22px; }
+  table.opt { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.opt th { text-align: left; font: 600 11px var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); padding: 9px 12px; border-bottom: 1px solid var(--line-strong); }
+  table.opt td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--text-2); line-height: 1.55; }
+  table.opt td:first-child { color: var(--text); font-weight: 600; min-width: 150px; }
+  table.opt td.mono, table.opt td code { font-family: var(--mono); font-size: 12.5px; }
+  table.opt tr:last-child td { border-bottom: 0; }
+
+  .callout { margin: 16px 0 20px; padding: 13px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); line-height: 1.6; color: var(--text-2); max-width: 80ch; }
+  .callout b:first-child { display: block; margin-bottom: 2px; color: var(--text); }
+  .callout.tip { border-left: 4px solid var(--out); }
+  .callout.note { border-left: 4px solid var(--ref); }
+  .callout.warn { border-left: 4px solid var(--warn); }
+  .steps-list { counter-reset: s; list-style: none; padding-left: 0 !important; }
+  .steps-list > li { counter-increment: s; position: relative; padding-left: 40px; margin: 12px 0; }
+  .steps-list > li::before { content: counter(s); position: absolute; left: 0; top: 1px; width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+    font: 600 12.5px var(--mono); background: var(--surface-3); color: var(--text); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0 6px; font-size: 14px; }
+  .flow span.box { padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 600; }
+  .flow span.arr { color: var(--text-3); }
+  dl.gloss { display: grid; grid-template-columns: minmax(150px, 220px) 1fr; gap: 8px 22px; margin: 14px 0; }
+  dl.gloss dt { font-weight: 600; color: var(--text); }
+  dl.gloss dd { margin: 0; }
+
+  @media (max-width: 960px) {
+    .man { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .toc { position: static; max-height: none; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--surface); }
+    .side { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 620px) {
+    .gallery { grid-template-columns: minmax(0, 1fr); }
+    dl.gloss { grid-template-columns: minmax(0, 1fr); }
+  }
+  .print-toc { display: none; }
+  @media print {
+    header.topbar, .toc, footer.site, .no-print { display: none !important; }
+    .print-toc { display: block; margin-top: 34px; }
+    .print-toc ol { columns: 2; column-gap: 40px; padding-left: 22px; margin: 10px 0 18px; }
+    .print-toc li { font-size: 14px; line-height: 1.9; color: var(--text); }
+    .print-toc li::marker { font-family: var(--mono); color: var(--out); }
+    .print-toc p { font-size: 13px; }
+    body { background: #fff; }
+    .man { display: block; padding: 0; max-width: none; }
+    .doc { max-width: none; }
+    .doc h2 { break-before: page; border-top: 0; margin-top: 0; }
+    figure.shot, table.opt tr, .callout, .side, .gallery { break-inside: avoid; }
+    .doc h3, .doc h4 { break-after: avoid; }
+    .table-wrap { overflow: visible; }
+    .doc a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html" aria-label="SANE Studio home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--out)"/><path d="M5 17h4l2.5-7 4 13 3-9 2 3H27" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b>SANE Studio</b><span>User manual</span>
+  </a>
+  <div class="spacer"></div>
+  <a class="btn ghost sm" href="manual/SANE_Studio_Manual.pdf" download>Download PDF</a>
+  <a class="btn sm" href="index.html">Open SANE Studio</a>
+  <button class="btn ghost icon" id="themeBtn" aria-label="Toggle colour theme" title="Toggle colour theme">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
+</header>
+
+<main class="man">
+  <nav class="toc" aria-label="Contents">
+    <div class="label">Contents</div>
+    <ol>
+      <li><a href="#about"><span>1</span>About SANE Studio</a></li>
+      <li><a href="#start"><span>2</span>Starting SANE Studio</a></li>
+      <li><a href="#files"><span>3</span>Files you can upload</a></li>
+      <li><a href="#tour"><span>4</span>The four screens</a></li>
+      <li><a href="#topbar"><span>5</span>The top bar</a></li>
+      <li><a href="#upload"><span>6</span>Screen 1: Upload</a></li>
+      <li><a href="#review"><span>7</span>Screen 2: Review recordings</a></li>
+      <li><a href="#settings"><span>8</span>Neutralization settings</a></li>
+      <li><a href="#processing"><span>9</span>Screen 3: Processing</a></li>
+      <li><a href="#results"><span>10</span>Screen 4: Results</a></li>
+      <li><a href="#viewer"><span>11</span>The signal viewer</a></li>
+      <li><a href="#tabs"><span>12</span>Analysis tabs</a></li>
+      <li><a href="#outputs"><span>13</span>Your output files</a></li>
+      <li><a href="#privacy"><span>14</span>Privacy and data handling</a></li>
+      <li><a href="#messages"><span>15</span>Messages and what to do</a></li>
+      <li><a href="#troubleshooting"><span>16</span>Troubleshooting</a></li>
+      <li><a href="#admin"><span>17</span>For administrators</a></li>
+      <li><a href="#glossary"><span>18</span>Glossary</a></li>
+    </ol>
+  </nav>
+
+  <article class="doc">
+    <div class="cover">
+      <div class="eyebrow">User manual · version 1.0 · October 2026</div>
+      <h1>SANE Studio user manual</h1>
+      <div class="scope" style="margin:0 0 16px"><b>This copy of SANE Studio runs in your browser.</b> The manual was written for the server version, so where it says files are uploaded to a session and deleted after 60 minutes, read instead: your recordings never leave this computer, the session lasts until you close or reload the tab, and the first visit downloads the engine (about 50 MB). Everything else, the screens, settings, charts and outputs, is the same.</div>
+      <p>This manual walks through SANE Studio from the first screen to the last download. Every button, setting, chart and message is covered, in the order you meet them. The screenshots come from the product itself, using the sample dataset that ships with it, so you can follow along on your own copy.</p>
+      <div class="meta"><span class="chip fmt">.edf</span><span class="chip fmt">.bdf</span><span class="chip fmt">.vhdr · .vmrk · .eeg</span><span class="chip fmt">.set · .fdt</span><span class="chip fmt">.fif</span></div>
+      <nav class="print-toc" aria-hidden="true">
+        <div class="label">Contents</div>
+        <ol>
+          <li>About SANE Studio</li><li>Starting SANE Studio</li><li>Files you can upload</li><li>The four screens</li>
+          <li>The top bar</li><li>Screen 1: Upload</li><li>Screen 2: Review recordings</li><li>Neutralization settings</li>
+          <li>Screen 3: Processing</li><li>Screen 4: Results</li><li>The signal viewer</li><li>Analysis tabs</li>
+          <li>Your output files</li><li>Privacy and data handling</li><li>Messages and what to do</li><li>Troubleshooting</li>
+          <li>For administrators</li><li>Glossary</li>
+        </ol>
+        <p>The web version of this manual is at <code>/manual</code> on any SANE Studio server, for example <code>http://localhost:8000/manual</code>.</p>
+      </nav>
+    </div>
+
+    <!-- ===================================================== 1 -->
+    <h2 id="about"><span class="num">1</span>About SANE Studio</h2>
+    <p>SANE Studio takes EEG recordings and removes the subject-level biomarkers that can reveal a person's neurological condition, such as an elevated theta/beta ratio. You get the data back in the same file format you uploaded, so it can go into the same analysis pipeline as before.</p>
+    <p>SANE stands for <strong>Spectral Attribute Neutralization for EEG</strong>. For each person it measures two things that stay roughly constant across a recording: how much power each channel has in each frequency band (the spectral profile), and how the channels move together within each band (the spatial covariance). It then moves both onto a shared reference, so the profile that marks one person as different from the others is gone.</p>
+
+    <h3>What changes and what stays</h3>
+    <div class="table-wrap"><table class="opt plain">
+      <thead><tr><th>Changed</th><th>Kept</th></tr></thead>
+      <tbody>
+        <tr><td>Each subject's band-power profile per channel (delta, theta, alpha, beta, gamma), including the theta/beta ratio</td><td>Moment-to-moment brain activity: event-related responses, oscillation bursts, ERD/ERS</td></tr>
+        <tr><td>Each subject's spatial fingerprint: the channel-to-channel correlations within each band</td><td>Every event marker, with the same times and labels</td></tr>
+        <tr><td>Personal header fields such as name, birth date and recording date (optional, on by default)</td><td>EOG, ECG, EMG, trigger and other non-EEG channels, bit for bit</td></tr>
+        <tr><td></td><td>File format, sampling rate, channel names, channel order and recording length</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout warn"><b>What SANE Studio is not</b>SANE Studio neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool. Individual traits outside those statistics, such as the exact frequency of a person's alpha peak, can remain in the data. Treat processed files as de-identified research data, not as anonymous data.</div>
+
+    <!-- ===================================================== 2 -->
+    <h2 id="start"><span class="num">2</span>Starting SANE Studio</h2>
+    <p>If SANE Studio is hosted for you online, open its web address and skip to <a href="#tour">section 4</a>. To run it on your own Windows computer, follow these steps.</p>
+    <h3>What you need</h3>
+    <ul>
+      <li>Python 3.10 or newer (from python.org).</li>
+      <li>A modern browser: Chrome, Edge, Firefox or Safari.</li>
+      <li>Free memory of about twice the size of the recording you process. A one-hour, 64-channel recording at 1000 Hz needs roughly 2 GB.</li>
+      <li>Free disk space for working files. One session can use several GB while it is open.</li>
+    </ul>
+    <h3>Steps</h3>
+    <ol class="steps-list">
+      <li><strong>Open PowerShell.</strong> Press the Windows key, type <code>PowerShell</code> and open it.</li>
+      <li><strong>Go to the project folder.</strong><pre>cd "E:\Brain signal work\sane-studio"</pre></li>
+      <li><strong>Install the packages (first time only).</strong><pre>pip install -r requirements.txt</pre></li>
+      <li><strong>Choose where working files go.</strong> By default they go to the Windows temp folder on drive C:. If C: is small, point them at another drive:<pre>$env:SANE_DATA_DIR = "D:\sane_jobs"</pre></li>
+      <li><strong>Start the server.</strong><pre>python -m uvicorn app.main:app --port 8000</pre>Wait for the line <code>Application startup complete</code>. Leave this window open: closing it stops SANE Studio.</li>
+      <li><strong>Open the app.</strong> In your browser, go to <code>http://localhost:8000</code>. This manual is at <code>http://localhost:8000/manual</code>.</li>
+      <li><strong>Stop it when you are done.</strong> Click the PowerShell window and press <kbd>Ctrl</kbd> + <kbd>C</kbd>.</li>
+    </ol>
+    <div class="callout tip"><b>Next time</b>You only need steps 1, 2, 4, 5 and 6. The packages stay installed.</div>
+
+    <!-- ===================================================== 3 -->
+    <h2 id="files"><span class="num">3</span>Files you can upload</h2>
+    <p>SANE Studio reads continuous EEG recordings in five formats. Some formats are split across several files, and you need to upload all of them together. Upload them in one go, or drop the whole folder.</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Format</th><th>Upload these files</th><th>You get back</th></tr></thead>
+      <tbody>
+        <tr><td>EDF / EDF+</td><td><code>recording.edf</code></td><td><code>recording_sane.edf</code></td></tr>
+        <tr><td>BDF / BDF+ (Biosemi)</td><td><code>recording.bdf</code></td><td><code>recording_sane.bdf</code></td></tr>
+        <tr><td>BrainVision</td><td><code>recording.vhdr</code> + <code>recording.vmrk</code> + <code>recording.eeg</code></td><td>the same three files with <code>_sane</code> added, in a zip</td></tr>
+        <tr><td>EEGLAB</td><td><code>recording.set</code>, plus <code>recording.fdt</code> if the recording has one</td><td><code>recording_sane.set</code> (plus <code>recording_sane.fdt</code> if you uploaded a .fdt)</td></tr>
+        <tr><td>FIF (MNE / Neuromag)</td><td><code>recording.fif</code> or <code>recording.fif.gz</code>; for a split recording, every part</td><td><code>recording_sane_raw.fif</code></td></tr>
+      </tbody>
+    </table></div>
+    <h3>Things to know before you upload</h3>
+    <ul>
+      <li><strong>Companion files are matched for you.</strong> A BrainVision header is paired with its marker and data files even if the files were renamed after recording. An EEGLAB .set is paired with the .fdt of the same name.</li>
+      <li><strong>Different formats can share one session.</strong> You can upload EDF and BrainVision files together; each one comes back in its own format.</li>
+      <li><strong>Recordings must be continuous.</strong> Files already cut into trials (epoched files) are refused. Upload the continuous recording.</li>
+      <li><strong>Each recording needs at least two scalp EEG channels and at least 10 seconds of data.</strong></li>
+      <li><strong>The default upload limit is 1024 MB per session.</strong> An administrator can change it (<a href="#admin">section 17</a>).</li>
+    </ul>
+    <h3>Files that look right but cannot be processed</h3>
+    <p>Some files share an EEG extension but hold no EEG. SANE Studio recognizes them and tells you why it skipped them (<a href="#messages">section 15</a>):</p>
+    <ul>
+      <li>EyeLink eye-tracker files, which also end in <code>.edf</code>.</li>
+      <li>MEG-only <code>.fif</code> files, including "empty room" noise recordings with no person in the scanner.</li>
+      <li>Part 2 or later of a split <code>.fif</code> recording uploaded without part 1.</li>
+      <li>DataLad, git-annex or Git LFS placeholders: small text files that stand in for a recording that was never downloaded.</li>
+      <li>Damaged files, such as a BrainVision data file cut off during copying, or a file whose values are physically impossible for EEG.</li>
+      <li>Recordings whose scalp EEG channels contain no signal at all.</li>
+    </ul>
+
+    <!-- ===================================================== 4 -->
+    <h2 id="tour"><span class="num">4</span>The four screens</h2>
+    <p>Working with SANE Studio always follows the same path. You can go back from the results to the settings as often as you like.</p>
+    <div class="flow" aria-label="Screen order">
+      <span class="box">1 · Upload</span><span class="arr">→</span><span class="box">2 · Review recordings</span><span class="arr">→</span><span class="box">3 · Processing</span><span class="arr">→</span><span class="box">4 · Results</span>
+    </div>
+    <ol>
+      <li><strong>Upload</strong>: add your files, or try a sample dataset (<a href="#upload">section 6</a>).</li>
+      <li><strong>Review recordings</strong>: check what SANE Studio found in each file, set subject IDs and choose settings (<a href="#review">sections 7</a> and <a href="#settings">8</a>).</li>
+      <li><strong>Processing</strong>: a progress screen while SANE Studio works (<a href="#processing">section 9</a>).</li>
+      <li><strong>Results</strong>: compare input and output, read the privacy report and download your files (<a href="#results">sections 10</a> to <a href="#tabs">12</a>).</li>
+    </ol>
+    <p>The address bar shows a session code after the <code>#</code> sign, for example <code>localhost:8000/#8f8a1406d407</code>. Reloading the page, or opening that address again while the session is alive, brings you back to the same place.</p>
+
+    <!-- ===================================================== 5 -->
+    <h2 id="topbar"><span class="num">5</span>The top bar</h2>
+    <p>The bar at the top of every screen holds these controls.</p>
+    <figure class="shot"><img src="manual/img/topbar-start.webp" width="1800" height="70" alt="Top bar before a session starts: logo and theme button" loading="lazy">
+      <figcaption><b>Figure 1.</b> The top bar before you upload anything: the logo, Manual and the theme button.</figcaption></figure>
+    <figure class="shot"><img src="manual/img/topbar-session.webp" width="1800" height="70" alt="Top bar during a session: session indicator, New session, theme button" loading="lazy">
+      <figcaption><b>Figure 2.</b> The top bar once a session exists: session indicator, New session, Manual and the theme button.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Control</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>SANE Studio logo</td><td>Returns to the Upload screen. Your session stays alive; reopen it from its address while it lasts.</td></tr>
+        <tr><td>Session · data deleted in N min</td><td>Shows how long your files stay on the server. The countdown restarts whenever you use the session and updates every 30 seconds. When it reaches zero, everything in the session is deleted.</td></tr>
+        <tr><td>New session</td><td>Deletes the current session and all its files right away, then returns to the Upload screen. Use it when you are finished, or to start over.</td></tr>
+        <tr><td>Manual</td><td>Opens this manual in a new browser tab, so your session stays open in the first one.</td></tr>
+        <tr><td>Moon icon</td><td>Switches between the light and dark colour theme. Your choice is remembered in this browser. Charts redraw in the new colours.</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ===================================================== 6 -->
+    <h2 id="upload"><span class="num">6</span>Screen 1: Upload</h2>
+    <figure class="shot"><img src="manual/img/home.webp" width="1800" height="1125" alt="The Upload screen" loading="lazy">
+      <figcaption><b>Figure 3.</b> The Upload screen: the drop zone on the left, sample datasets below it, and a summary of what happens to your data on the right.</figcaption></figure>
+
+    <h3>The drop zone</h3>
+    <figure class="shot"><img src="manual/img/home-dropzone.webp" width="1628" height="578" alt="The drop zone with Choose files and Choose folder buttons and format chips" loading="lazy">
+      <figcaption><b>Figure 4.</b> The drop zone.</figcaption></figure>
+    <p>There are three ways to add files:</p>
+    <ul>
+      <li><strong>Drag and drop.</strong> Drag files, or a whole folder, from File Explorer onto the dashed box. The box turns teal while you hold files over it. Folders are searched, including their subfolders.</li>
+      <li><span class="ui">Choose files</span> opens a file picker. Hold <kbd>Ctrl</kbd> to select several files, for example a .vhdr, .vmrk and .eeg together.</li>
+      <li><span class="ui">Choose folder</span> uploads every supported file in a folder you pick, including subfolders.</li>
+    </ul>
+    <p>The chips under the buttons list the accepted extensions. SANE Studio ignores files with other extensions, so dropping a folder that also holds spreadsheets or documents is fine.</p>
+    <p>While files upload, the title of the drop zone shows progress, for example <code>Uploading 3 files · 45% of 167.3 MB</code>. When the upload finishes, the Review screen opens.</p>
+
+    <h3>Sample datasets</h3>
+    <figure class="shot"><img src="manual/img/home-samples.webp" width="1628" height="234" alt="Two sample dataset cards" loading="lazy">
+      <figcaption><b>Figure 5.</b> The two built-in sample datasets.</figcaption></figure>
+    <p>Click a card to start a session with that data, exactly as if you had uploaded it. Both run in a few seconds.</p>
+    <ul>
+      <li><strong>Resting EEG, depression study</strong>: three subjects, 64 EEG and 2 EOG channels, 250 Hz, EDF. Real recordings from OpenNeuro dataset ds003478 (public domain, CC0).</li>
+      <li><strong>128-channel motor task (synthetic)</strong>: three subjects, Biosemi 128 channels plus Status, 256 Hz, BDF. Subject 3 carries an elevated theta biomarker, so you can watch SANE remove it.</li>
+    </ul>
+
+    <h3>What happens to your data</h3>
+    <div class="side">
+      <figure class="shot"><img src="manual/img/home-how.webp" width="1122" height="1224" alt="Panel explaining the three processing steps" loading="lazy">
+        <figcaption><b>Figure 6.</b> The summary panel.</figcaption></figure>
+      <div>
+        <p>The panel on the right of the Upload screen is information only; it has no controls. It summarizes the process:</p>
+        <ol>
+          <li><strong>Read</strong>: each recording is parsed with MNE-Python, and scalp EEG is separated from EOG, ECG, EMG and trigger channels.</li>
+          <li><strong>Neutralize</strong>: each subject's band power and channel relationships are moved to the reference.</li>
+          <li><strong>Return</strong>: you download the result in the format you uploaded.</li>
+        </ol>
+        <p>Below the steps it lists the privacy promises (session deletion after 60 minutes, optional header stripping, the privacy report) and what is neutralized versus preserved.</p>
+      </div>
+    </div>
+
+    <h3>The footer</h3>
+    <figure class="shot"><img src="manual/img/footer.webp" width="1800" height="70" alt="Footer" loading="lazy">
+      <figcaption><b>Figure 7.</b> The footer repeats the product's scope: it neutralizes subject-level biomarkers and is not a complete anonymization tool.</figcaption></figure>
+
+    <!-- ===================================================== 7 -->
+    <h2 id="review"><span class="num">7</span>Screen 2: Review recordings</h2>
+    <p>After an upload, SANE Studio opens every file, works out what it contains, and shows the result here before anything is changed. Check this screen carefully: it is where you set subject IDs and choose how strongly to neutralize.</p>
+    <figure class="shot"><img src="manual/img/review.webp" width="1800" height="1125" alt="Review recordings screen with three recordings and the settings panel" loading="lazy">
+      <figcaption><b>Figure 8.</b> The Review screen with the depression sample loaded: the recordings table on the left, the Neutralization settings on the right.</figcaption></figure>
+
+    <h3>Add more files</h3>
+    <p>The <span class="ui">Add more files</span> button at the top right adds files to the same session, for example a subject you forgot. The table updates when the upload finishes. You cannot add files while a session is processing.</p>
+
+    <h3>The recordings table</h3>
+    <figure class="shot"><img src="manual/img/review-table.webp" width="1800" height="546" alt="Recordings table" loading="lazy">
+      <figcaption><b>Figure 9.</b> One row per recording. The header shows the count, how many are ready, and the total size.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>File</td><td>The header file of the recording. Lines underneath give more detail (see below).</td></tr>
+        <tr><td>Format</td><td>EDF, BDF, BrainVision, EEGLAB or FIF.</td></tr>
+        <tr><td>EEG / all ch</td><td>How many channels SANE Studio will process as scalp EEG, out of all channels in the file. The rest pass through unchanged.</td></tr>
+        <tr><td>Rate</td><td>Sampling rate in Hz.</td></tr>
+        <tr><td>Duration</td><td>Recording length (minutes:seconds, or seconds for short recordings).</td></tr>
+        <tr><td>Events</td><td>Number of event markers or annotations in the file. They are all kept.</td></tr>
+        <tr><td>Subject</td><td>The subject ID used to group recordings. You can edit it (see <a href="#subjects">Subject IDs</a>).</td></tr>
+        <tr><td>Status</td><td><span class="chip ok">Ready</span> means the recording will be processed. <span class="chip err">Skipped</span> means it cannot be, and the reason is shown under the file name.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h4>Lines under the file name</h4>
+    <figure class="shot"><img src="manual/img/review-mixed.webp" width="1800" height="686" alt="A ready recording with its kept-unchanged list opened, and a skipped eye-tracker file with its reason" loading="lazy">
+      <figcaption><b>Figure 10.</b> A real upload with two files. The first is ready, and its list of untouched channels is opened. The second is an eye-tracker file and is skipped, with the reason in red.</figcaption></figure>
+    <ul>
+      <li><strong>+ companion files</strong> (grey): the other files that belong to this recording, such as <code>+ recording.fdt</code>.</li>
+      <li><strong>Kept unchanged</strong> (grey): channels that will pass through untouched, with the reason for each. With six or fewer, they are listed by name. With more, you see a count by type, for example "17 non-EEG, 1 trigger, 2 non-electrode channels"; click the line to show every name.</li>
+      <li><strong>Amber text</strong>: a warning that does not stop processing, for example a missing companion file.</li>
+      <li><strong>Can't be processed</strong> (red): the reason a recording is skipped. <a href="#messages">Section 15</a> lists every reason and what to do about it.</li>
+    </ul>
+    <p>The reasons a channel is kept unchanged are:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Shown as</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>EOG, ECG, EMG, trigger, misc, MEG</td><td>The file itself marks the channel as that type.</td></tr>
+        <tr><td>non-EEG</td><td>The file calls it EEG, but the name shows otherwise (EOG, ECG, EKG, EMG, Status, Trigger, GSR, respiration, temperature, accelerometer and similar).</td></tr>
+        <tr><td>sensor</td><td>The channel is stored in a unit that is not a voltage, such as nS, nA or degrees.</td></tr>
+        <tr><td>non-electrode</td><td>The other EEG channels use standard 10-20/10-05 names, but this one is not an electrode name. Typical examples are reference electrodes, mastoids, audio recorded alongside the EEG, or driving-simulator signals.</td></tr>
+        <tr><td>flat</td><td>The channel carries no signal anywhere in the recording.</td></tr>
+        <tr><td>marked bad</td><td>The file lists the channel as bad.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Notes under the table tell you about files that were ignored, for example a <code>.fdt</code> without its <code>.set</code>, or a file that is not EEG at all.</p>
+
+    <h3 id="subjects">Subject IDs</h3>
+    <p>SANE Studio builds one correction per subject. Recordings with the same subject ID are treated as the same person: their statistics are combined, and in a group they count once toward the reference.</p>
+    <ul>
+      <li>SANE Studio fills the ID in from the file name when it follows the BIDS style (<code>sub-001_task-rest_eeg.edf</code> gives <code>sub-001</code>). Otherwise it uses the file name.</li>
+      <li><strong>Give recordings of the same person the same ID</strong>, for example two sessions of one patient.</li>
+      <li><strong>Give different people different IDs.</strong> This matters when you mix files from different studies, which often reuse labels such as <code>sub-01</code>.</li>
+      <li>The number of different IDs decides whether a group (cohort) reference can be used. The Reference hint in the settings panel updates as you type.</li>
+    </ul>
+    <figure class="shot"><img src="manual/img/review-subject-edit.webp" width="1800" height="546" alt="Editing a subject ID" loading="lazy">
+      <figcaption><b>Figure 11.</b> Subject IDs are edited directly in the table. A box left empty gives that recording an ID of its own, so it counts as a separate subject.</figcaption></figure>
+
+    <!-- ===================================================== 8 -->
+    <h2 id="settings"><span class="num">8</span>Neutralization settings</h2>
+    <p>The panel on the right of the Review screen controls how SANE Studio processes the recordings. The defaults suit most uses: full strength, automatic spatial alignment, automatic reference, both switches on.</p>
+    <div class="side">
+      <figure class="shot"><img src="manual/img/settings-auto-cohort.webp" width="720" height="1798" alt="Settings panel with default values" loading="lazy">
+        <figcaption><b>Figure 12.</b> Default settings with three subjects uploaded.</figcaption></figure>
+      <div>
+        <h3 style="margin-top:0">Strength α</h3>
+        <p>A slider from <strong>0 (off)</strong> to <strong>1 (full)</strong> in steps of 0.05. Default: 1.00.</p>
+        <p>At 1, each subject's band power per channel is set exactly to the reference. At 0, with Spatial alignment on Auto, the output is identical to the input. Values in between move part of the way: at 0.5, a channel's power ends up halfway between its own value and the reference on a logarithmic scale.</p>
+        <p>Lower the strength only if you need to keep part of each subject's individual profile and accept that some of the biomarker remains. For privacy, use 1.</p>
+
+        <h3>Spatial alignment</h3>
+        <p>A second slider from <strong>0 (keep channels)</strong> to <strong>1 (full)</strong>. It controls how far each subject's channel-to-channel correlations move onto the reference, which removes the spatial fingerprint. It does not affect removal of the spectral biomarker.</p>
+        <p>By default it is set to <strong>Auto</strong>, shown as <code>Auto · full</code> or <code>Auto · off</code>:</p>
+        <ul>
+          <li><strong>Auto · full</strong> when recordings are aligned to your own cohort. The cohort is a measured reference, and in our tests the output kept a brain-dynamics score of 0.92 to 0.99. In this mode spatial alignment follows the strength: at strength 0.5 it is also 0.5.</li>
+          <li><strong>Auto · off</strong> when recordings are aligned to the built-in normative profile. The only spatial target there is a generic head model, and aligning to it rebuilds each channel largely from its neighbours, which costs much more of the signal.</li>
+        </ul>
+      </div>
+    </div>
+    <p>Move the slider to choose a value yourself. The value then applies to every recording, and a <span class="ui">Back to auto</span> link appears under the slider to restore the automatic choice.</p>
+    <div class="gallery">
+      <figure class="shot"><img src="manual/img/settings-spatial-manual.webp" width="720" height="1766" alt="Spatial alignment set by hand to 0.50" loading="lazy">
+        <figcaption><b>Figure 13.</b> Spatial alignment set by hand to 0.50, with the Back to auto link.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/settings-normative.webp" width="720" height="1798" alt="Reference set to Normative, spatial alignment Auto off" loading="lazy">
+        <figcaption><b>Figure 14.</b> Reference set to Normative: spatial alignment switches to Auto · off and the hint explains why.</figcaption></figure>
+    </div>
+    <div class="callout tip"><b>When to change spatial alignment</b>Lower it toward 0 if your analysis reads individual channels, such as ERP amplitude at Pz, and you want every channel to keep its own signal. Raise it toward 1 for a single subject if removing the spatial fingerprint matters more than keeping each channel exactly as recorded.</div>
+
+    <h3>Reference</h3>
+    <p>The reference is the profile every subject is moved toward. Three buttons choose it:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Choice</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Auto (default)</td><td>Uses your cohort when there are at least two different subject IDs among the ready recordings. Otherwise uses the normative profile.</td></tr>
+        <tr><td>Cohort</td><td>Always uses the cohort average. With fewer than two subjects this is impossible, so the hint says the normative profile will be used instead.</td></tr>
+        <tr><td>Normative</td><td>Always uses the built-in normative profile, even when several subjects are uploaded.</td></tr>
+      </tbody>
+    </table></div>
+    <p><strong>The cohort reference</strong> is the average of your subjects, built channel by channel. Each subject counts once, however many recordings they have. Channels are matched by name, ignoring upper and lower case and spaces, so slightly different montages still line up. This keeps the group's typical profile, so group-level analyses of the processed data stay meaningful.</p>
+    <p><strong>The normative profile</strong> is a built-in typical spectral shape. Each channel keeps its own overall power and takes on the normative balance between bands.</p>
+    <p>The hint under the buttons tells you which reference will be used. Two cases are handled automatically during processing and reported in the results:</p>
+    <ul>
+      <li>In a cohort, a recording whose channel names barely overlap with any other subject's (less than half of its channels) is matched to the normative profile instead. Without that, it would be compared only with itself and come back unchanged.</li>
+      <li>Within a cohort, a channel that only one subject has gets the cohort's average spectral shape at its own power level.</li>
+    </ul>
+
+    <h3>Normative spatial model</h3>
+    <p>Two buttons decide what the spatial target looks like when a recording uses the normative profile <em>and</em> spatial alignment is above 0. Otherwise this setting has no effect, and it is shown dimmed.</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Choice</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td>Head geometry (default)</td><td>Models how signals spread across the scalp from the distance between electrodes. Positions come from the file, or are matched by channel name to the standard 10-05, Biosemi or EGI layouts. Channels without a known position keep their own relationships.</td></tr>
+        <tr><td>Decorrelated</td><td>Treats every channel as independent of the others. This removes the most spatial information and changes the signal the most.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Keep content outside 1–45 Hz</h3>
+    <p>A switch, on by default. SANE Studio works on five bands: delta 1–4 Hz, theta 4–8 Hz, alpha 8–13 Hz, beta 13–30 Hz and gamma 30–45 Hz. With the switch on, slow drifts below 1 Hz and content above 45 Hz pass through the EEG channels unchanged. With it off, that content is removed from the processed EEG channels. Non-EEG channels are never touched either way.</p>
+    <p>At low sampling rates, bands above the recording's frequency limit are left out. Below about 100 Hz sampling there is no gamma band, and below about 70 Hz no beta band either.</p>
+
+    <h3>Strip personal metadata</h3>
+    <p>A switch, on by default. It removes identifying fields from the header of each output file:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Format</th><th>What is removed</th></tr></thead>
+      <tbody>
+        <tr><td>EDF, BDF</td><td>Patient identification becomes <code>X X X X</code>, recording identification becomes <code>Startdate X X X X</code>, and the start date and time become 01.01.85 00.00.00.</td></tr>
+        <tr><td>BrainVision</td><td>The recording date and time stored in the marker file is removed.</td></tr>
+        <tr><td>EEGLAB, FIF</td><td>Subject name, ID and sex are replaced, the experimenter field is replaced, and the measurement date becomes 1 January 2000. A birth date, if present, moves by the same amount, so age is kept.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Event times are stored relative to the start of the recording, so they stay correct. Turn the switch off only if you need the original dates in the output.</p>
+
+    <h3>The Neutralize button</h3>
+    <p>The button at the bottom of the panel starts processing. It names how many recordings will be processed, for example <span class="ui">Neutralize 3 recordings</span>. If no recording is ready, it reads <span class="ui">No recordings can be processed</span> and cannot be clicked.</p>
+
+    <h3>Recommended settings</h3>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Your goal</th><th>Settings</th></tr></thead>
+      <tbody>
+        <tr><td>Share a group study with the disease markers removed</td><td>Upload all subjects together, give each person a unique ID, keep every default.</td></tr>
+        <tr><td>Process one person's recording</td><td>Keep the defaults. SANE Studio uses the normative profile and leaves spatial alignment off.</td></tr>
+        <tr><td>Remove a single subject's spatial fingerprint too</td><td>Defaults, then move Spatial alignment up, for example to 0.5 or 1.</td></tr>
+        <tr><td>Channel-level ERP analysis afterwards</td><td>Spatial alignment at 0, everything else default.</td></tr>
+        <tr><td>Check what SANE does without changing data</td><td>Strength 0 with Spatial alignment on Auto. The output is identical to the input, and the report shows the baseline numbers.</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ===================================================== 9 -->
+    <h2 id="processing"><span class="num">9</span>Screen 3: Processing</h2>
+    <figure class="shot"><img src="manual/img/processing.webp" width="1800" height="1125" alt="Processing screen with progress bar and five steps" loading="lazy">
+      <figcaption><b>Figure 15.</b> The Processing screen. The line under the bar names the step and the file in progress.</figcaption></figure>
+    <p>This screen has no controls. The bar fills as work progresses, the line under it says what is happening, and the five step labels light up in turn:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Step</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>Analyze</td><td>Each recording is read and its channels are sorted. Windows with amplifier saturation, spikes, flat signal, missing samples or <code>BAD_</code> annotations are set aside. Band power and channel relationships are measured on the rest.</td></tr>
+        <tr><td>Reference</td><td>The cohort or normative reference is built, and one correction is computed per subject.</td></tr>
+        <tr><td>Neutralize</td><td>The correction is applied to the whole continuous recording.</td></tr>
+        <tr><td>Write</td><td>The output is written in the original format.</td></tr>
+        <tr><td>Report</td><td>The before/after measurements are calculated and the downloads are packaged.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Most recordings take a few seconds to a minute. A 30-minute, 64-channel recording takes about half a minute on a typical laptop. You can leave the tab open and wait; the results open by themselves.</p>
+    <p>If one recording fails, the others are still processed, and the failed one is listed as skipped with its reason when you click <span class="ui">Change settings</span>. If every recording fails, you return to the Review screen with a message that names each file and its problem.</p>
+
+    <!-- ===================================================== 10 -->
+    <h2 id="results"><span class="num">10</span>Screen 4: Results</h2>
+    <figure class="shot"><img src="manual/img/workspace.webp" width="1800" height="1125" alt="Results workspace" loading="lazy">
+      <figcaption><b>Figure 16.</b> The Results screen: the recordings list on the left; the selected recording's details, summary cards and signal viewer on the right. The analysis tabs are further down.</figcaption></figure>
+
+    <h3>The recordings list</h3>
+    <div class="side">
+      <figure class="shot"><img src="manual/img/ws-rail.webp" width="536" height="876" alt="Recordings list with download and settings buttons" loading="lazy">
+        <figcaption><b>Figure 17.</b> The list on the left.</figcaption></figure>
+      <div>
+        <p>Each processed recording has one entry showing its format, file name, subject ID, number of EEG channels, and its theta/beta biomarker before and after (<code>θ/β 0.88 → 0.39</code>). The amber number is the input, the teal number the output. Click an entry to show that recording. The selected one is highlighted.</p>
+        <p><span class="ui">Download all (.zip)</span> downloads one zip file (<code>sane_outputs.zip</code>) with every output file and the full report, <code>SANE_REPORT.json</code>.</p>
+        <p><span class="ui">Change settings</span> returns to the Review screen with the same files. There you can change settings or subject IDs, add files, and run again. A new run replaces the previous outputs.</p>
+      </div>
+    </div>
+
+    <h3>The recording header</h3>
+    <figure class="shot"><img src="manual/img/ws-header.webp" width="1800" height="96" alt="Recording title, fact chips and download button" loading="lazy">
+      <figcaption><b>Figure 18.</b> The header of the selected recording.</figcaption></figure>
+    <p>The title is the file name. The chips under it show format, subject ID, channel count (EEG plus auxiliary channels), sampling rate, duration, number of events, and the reference used:</p>
+    <ul>
+      <li><code>cohort reference · 3 subjects</code>: aligned to the average of three subjects.</li>
+      <li><code>normative · kernel</code>: normative profile, spatial model from head geometry.</li>
+      <li><code>normative · own-spatial</code>: normative profile, and no electrode positions were found, so channel relationships stay as recorded.</li>
+      <li><code>normative · identity</code>: normative profile with the Decorrelated spatial model.</li>
+    </ul>
+    <p>An amber note under the chips appears when something about this recording is worth knowing. For example, it was matched to the normative profile because its channel names did not overlap with the cohort, it contained missing samples, or it was written as .set + .fdt because of its size. <a href="#messages">Section 15</a> lists these notes.</p>
+    <p>The button on the right downloads this recording's output: a single file (<span class="ui">Download recording_sane.edf</span>), or a zip when the format has several files (<span class="ui">Download BrainVision bundle (.zip)</span>).</p>
+
+    <h3>Summary cards</h3>
+    <figure class="shot"><img src="manual/img/ws-kpis.webp" width="1800" height="284" alt="Four summary cards" loading="lazy">
+      <figcaption><b>Figure 19.</b> The four summary cards. Amber numbers describe the input, teal numbers the output.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Card</th><th>How to read it</th></tr></thead>
+      <tbody>
+        <tr><td>θ/β biomarker deviation</td><td>How far this recording's theta/beta ratio (log scale, averaged over channels) is from the reference, before and after. Lower is better; 0 means the biomarker now equals the reference.</td></tr>
+        <tr><td>Spatial fingerprint</td><td>How far the channel-to-channel correlations are from the reference, averaged over bands. Lower is better. When spatial alignment was off, the card says so, and the two numbers stay close, as intended.</td></tr>
+        <tr><td>Trait Leakage Index Λ</td><td>How identifiable subjects are from their band-power features across the whole cohort, from 0 (cannot tell subjects apart) to 1 (fully identifiable). Lower is better. It needs at least two subjects who share channel names; otherwise the card explains why it is missing.</td></tr>
+        <tr><td>Brain dynamics kept</td><td>How closely the output follows the input within each band, measured on clean signal. 1 means the moment-to-moment activity is unchanged apart from the intended rescaling of each band. Higher is better. Waveform similarity, the plain correlation of the raw traces, is given underneath.</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ===================================================== 11 -->
+    <h2 id="viewer"><span class="num">11</span>The signal viewer</h2>
+    <p>The viewer shows the recording itself, input and output, with every channel. It is the place to check with your own eyes that the brain activity is still there.</p>
+    <figure class="shot"><img src="manual/img/viewer-split.webp" width="1800" height="1544" alt="Signal viewer in split view showing 66 channels" loading="lazy">
+      <figcaption><b>Figure 20.</b> Split view: the input in amber on the left, the SANE output in teal on the right, with the same 10-second window and scale.</figcaption></figure>
+
+    <h3>Toolbar</h3>
+    <figure class="shot"><img src="manual/img/viewer-toolbar.webp" width="1800" height="169" alt="Viewer toolbar" loading="lazy">
+      <figcaption><b>Figure 21.</b> The viewer toolbar.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Control</th><th>Options and effect</th></tr></thead>
+      <tbody>
+        <tr><td>View</td><td><strong>Split</strong>: input and output side by side (default). <strong>Overlay</strong>: both on one plot, input faint amber under output teal. <strong>Input</strong>: input only, full width. <strong>Output</strong>: output only, full width. <strong>Difference</strong>: output minus input, in violet, which shows exactly what SANE changed.</td></tr>
+        <tr><td>Band</td><td>Filters the display to one band: Broadband (default), δ 1–4 Hz, θ 4–8 Hz, α 8–13 Hz, β 13–30 Hz or γ 30–45 Hz. This only changes what you see; the files are not affected. Choosing a band resets the amplitude scale.</td></tr>
+        <tr><td>Window</td><td>How many seconds are shown at once: 2, 5, 10 (default), 20, 30 or 60.</td></tr>
+        <tr><td>Channels</td><td>Which channels are shown: <strong>All EEG</strong> (default), a brain region (Frontal, Central, Temporal, Parietal, Occipital, offered when channel names allow), blocks of 32 channels for montages with more than 40 (<strong>Channels 1–32</strong>, <strong>33–64</strong> and so on), or <strong>Auxiliary only</strong> for the pass-through channels.</td></tr>
+        <tr><td>Scale</td><td><kbd>−</kbd> and <kbd>+</kbd> make the traces smaller or larger by a factor of 1.5. The value, in µV, is the vertical space given to each channel row. A scale bar with its size in µV sits at the bottom right of each plot. The scale is set automatically when a recording opens.</td></tr>
+        <tr><td>Aux</td><td>Shows or hides the auxiliary channels (EOG, ECG and other pass-through channels) below the EEG, under a separating line and with grey labels. Trigger channels are never drawn as traces.</td></tr>
+        <tr><td>Events</td><td>Shows or hides event markers: dashed violet lines with their labels at the top of the plot, and ticks on the timeline.</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>View modes</h3>
+    <div class="gallery">
+      <figure class="shot"><img src="manual/img/viewer-overlay.webp" width="1800" height="1544" alt="Overlay view" loading="lazy"><figcaption><b>Figure 22.</b> Overlay.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-diff.webp" width="1800" height="1544" alt="Difference view" loading="lazy"><figcaption><b>Figure 23.</b> Difference: output minus input.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-in.webp" width="1800" height="1544" alt="Input only view" loading="lazy"><figcaption><b>Figure 24.</b> Input only.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-out.webp" width="1800" height="1544" alt="Output only view" loading="lazy"><figcaption><b>Figure 25.</b> Output only.</figcaption></figure>
+    </div>
+
+    <h3>Bands, channel groups and scale</h3>
+    <div class="gallery">
+      <figure class="shot"><img src="manual/img/viewer-band-theta.webp" width="1800" height="1544" alt="Viewer filtered to theta band" loading="lazy"><figcaption><b>Figure 26.</b> Band set to θ 4–8 Hz. Theta is where this subject's biomarker lived, so the output differs most here.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-region.webp" width="1800" height="1198" alt="Viewer showing only frontal channels" loading="lazy"><figcaption><b>Figure 27.</b> Channels set to a single region: fewer rows, more detail per channel.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-aux-only.webp" width="1800" height="842" alt="Viewer showing only auxiliary channels" loading="lazy"><figcaption><b>Figure 28.</b> Auxiliary only: the two EOG channels are identical in input and output.</figcaption></figure>
+      <figure class="shot"><img src="manual/img/viewer-scale-up.webp" width="1800" height="1544" alt="Viewer with larger traces" loading="lazy"><figcaption><b>Figure 29.</b> After pressing + twice: larger traces.</figcaption></figure>
+    </div>
+
+    <h3>Reading values and selecting a channel</h3>
+    <figure class="shot"><img src="manual/img/viewer-hover.webp" width="1800" height="1183" alt="Hover readout showing channel, time and values" loading="lazy">
+      <figcaption><b>Figure 30.</b> Hovering over a trace shows the channel, the time, and the input and output values in µV. A thin line marks the same moment in both plots.</figcaption></figure>
+    <p><strong>Hover</strong> over any trace to read its values. <strong>Click</strong> a trace to select that channel: its row is highlighted, its label turns indigo, and the Spectrum tab switches to that channel. Click it again to clear the selection.</p>
+    <figure class="shot"><img src="manual/img/viewer-selected.webp" width="1800" height="1544" alt="A selected channel highlighted in both plots" loading="lazy">
+      <figcaption><b>Figure 31.</b> A selected channel, highlighted in both plots.</figcaption></figure>
+
+    <h3>Timeline and moving through the recording</h3>
+    <figure class="shot"><img src="manual/img/viewer-timeline.webp" width="1800" height="195" alt="Timeline overview with navigation buttons" loading="lazy">
+      <figcaption><b>Figure 32.</b> The timeline under the plots.</figcaption></figure>
+    <p>The strip under the plots shows the whole recording: the overall signal level of the input (amber) and output (teal), events as ticks, and the current window as a shaded box.</p>
+    <ul>
+      <li><strong>Click</strong> anywhere on the timeline to jump there, or <strong>drag</strong> along it to scrub.</li>
+      <li>The <kbd>‹</kbd> and <kbd>›</kbd> buttons move back or forward by one window.</li>
+      <li>The <kbd>←</kbd> and <kbd>→</kbd> arrow keys do the same, as long as the cursor is not in a text box or a menu.</li>
+      <li>The line next to the buttons reads, for example, <code>0 s – 10 s of 1:00 · 66 channels · 250 Hz</code>.</li>
+      <li>The legend on the right repeats the colours: input, SANE output, events.</li>
+    </ul>
+
+    <!-- ===================================================== 12 -->
+    <h2 id="tabs"><span class="num">12</span>Analysis tabs</h2>
+    <p>Below the viewer, five tabs measure what SANE changed in the selected recording. Click a tab name to switch.</p>
+
+    <h3>Spectrum</h3>
+    <figure class="shot"><img src="manual/img/tab-spectrum.webp" width="1800" height="809" alt="Spectrum tab with power spectra and statistic cards" loading="lazy">
+      <figcaption><b>Figure 33.</b> The Spectrum tab.</figcaption></figure>
+    <p>The chart shows the power spectrum in decibels, input in amber and output in teal. The theta and beta bands, which form the biomarker, are shaded violet. Outside 1–45 Hz the two curves match when <span class="ui">Keep content outside 1–45 Hz</span> was on.</p>
+    <p>The <span class="ui">Channel</span> menu shows the mean of all EEG channels (default) or any single channel. Clicking a trace in the viewer also picks it here. The three cards give, for that selection, the log theta/beta ratio, the relative theta power and the relative beta power: input, then output, with the reference value underneath.</p>
+
+    <h3>Band power</h3>
+    <figure class="shot"><img src="manual/img/tab-bands.webp" width="1800" height="679" alt="Band power tab" loading="lazy">
+      <figcaption><b>Figure 34.</b> The Band power tab.</figcaption></figure>
+    <p>The left chart shows each band's share of the total power, averaged over channels, for the input, the output and the reference. The output bars should match the reference bars. The right chart shows every EEG channel's theta/beta deviation from the reference, as a pair of bars: input in amber, output in teal. Output deviations collapse onto the zero line.</p>
+
+    <h3>Topography</h3>
+    <figure class="shot"><img src="manual/img/tab-topo.webp" width="1800" height="835" alt="Topography tab with three head maps" loading="lazy">
+      <figcaption><b>Figure 35.</b> The Topography tab showing the theta/beta ratio across the scalp.</figcaption></figure>
+    <p>Three head maps, seen from above with the nose at the top, show how a measure is spread over the scalp: <strong>Input</strong>, <strong>SANE output</strong> and <strong>Reference</strong>. White dots are electrodes. The output map should look like the reference map.</p>
+    <p>The <span class="ui">Map</span> menu chooses the measure: theta/beta ratio (log, default), or the relative power of delta, theta, alpha, beta or gamma. All three maps share one colour scale, shown underneath with its range. The note under the scale says how many channels have a known position. Channels without one are left off the maps.</p>
+    <figure class="shot"><img src="manual/img/tab-topo-alpha.webp" width="1800" height="835" alt="Topography tab showing relative alpha power" loading="lazy">
+      <figcaption><b>Figure 36.</b> The same tab with the map set to relative α power.</figcaption></figure>
+
+    <h3>Spatial fingerprint</h3>
+    <figure class="shot"><img src="manual/img/tab-spatial.webp" width="1800" height="900" alt="Spatial fingerprint tab with three correlation matrices" loading="lazy">
+      <figcaption><b>Figure 37.</b> The Spatial fingerprint tab in the alpha band.</figcaption></figure>
+    <p>Each square is a channel-by-channel correlation matrix: every row and column is one EEG channel, and the colour shows how strongly two channels move together in the chosen band, from −1 (blue, opposite) through 0 (white) to +1 (red, together). The three squares are the input, the SANE output and the reference.</p>
+    <p>The <span class="ui">Band</span> buttons choose delta, theta, alpha (default), beta or gamma. The <code>distance</code> numbers above the first two squares say how far each one is from the reference: the input distance is the subject's spatial fingerprint, and the output distance shows how much of it is left. With spatial alignment off, the two distances stay similar, as intended.</p>
+
+    <h3>Privacy report</h3>
+    <figure class="shot"><img src="manual/img/tab-report.webp" width="1800" height="1586" alt="Privacy report tab" loading="lazy">
+      <figcaption><b>Figure 38.</b> The Privacy report for the depression sample: between-subject theta/beta variance down 99.99 percent.</figcaption></figure>
+    <p>The report covers the whole session, not only the selected recording. The four cards at the top:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Card</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Subjects / recordings</td><td>How many different subject IDs and recordings were processed, and the strength α used.</td></tr>
+        <tr><td>θ/β between-subject variance</td><td>How much the theta/beta biomarker still varies between subjects, before and after, and the percentage reduction. When the variance is close to zero, no threshold on this biomarker can tell patients from controls. Needs at least two subjects.</td></tr>
+        <tr><td>Trait Leakage Index Λ</td><td>The same index as the summary card: subject identifiability from band-power features, before and after.</td></tr>
+        <tr><td>Adaptive biomarker attacker</td><td>A model that tries to recover each subject's theta/beta from the output, trained on all the other subjects. ρ is the correlation between its guesses and the truth: close to 0 means the attack fails. Needs at least five subjects.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The <strong>θ/β per subject</strong> table lists each subject's log theta/beta ratio on the channels all subjects share: input, output and the change. In a cohort, the output values should be almost equal.</p>
+    <p>The <strong>Recordings</strong> table has one row per recording:</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Reference</td><td>The reference used. For a cohort, the percentage of this recording's channels that other subjects share.</td></tr>
+        <tr><td>Fit windows</td><td>The share of the recording's 4-second windows used to measure it. Windows with artifacts or missing samples are left out.</td></tr>
+        <tr><td>Fingerprint</td><td>Spatial fingerprint distance, input → output.</td></tr>
+        <tr><td>Power deviation</td><td>The typical difference between each channel's band power and the reference, on a log scale, input → output. 0 means every band of every channel sits on the reference.</td></tr>
+        <tr><td>Dynamics kept</td><td>Brain dynamics kept, as on the summary card. Hover over the number to see it for each band.</td></tr>
+        <tr><td>Waveform</td><td>Plain correlation between input and output traces on clean signal.</td></tr>
+        <tr><td>Events</td><td>Number of events, the same in input and output.</td></tr>
+        <tr><td>Output</td><td>The names of the files written for this recording.</td></tr>
+      </tbody>
+    </table></div>
+    <p>The <strong>Scope</strong> box restates what SANE neutralizes and what it does not. <span class="ui">Export report (JSON)</span> downloads the full report as <code>SANE_REPORT.json</code> (<a href="#outputs">section 13</a>).</p>
+
+    <h3>Dark theme</h3>
+    <figure class="shot"><img src="manual/img/workspace-dark.webp" width="1800" height="1125" alt="Results screen in the dark theme" loading="lazy">
+      <figcaption><b>Figure 39.</b> The Results screen in the dark theme, switched with the moon icon in the top bar.</figcaption></figure>
+
+    <!-- ===================================================== 13 -->
+    <h2 id="outputs"><span class="num">13</span>Your output files</h2>
+    <h3>Names</h3>
+    <p>Each output keeps the input name with <code>_sane</code> added: <code>sub-002_task-rest_eeg.edf</code> becomes <code>sub-002_task-rest_eeg_sane.edf</code>. FIF outputs end in <code>_sane_raw.fif</code>, following the MNE naming convention. You can therefore keep processed files next to the originals without overwriting anything.</p>
+    <h3>How each format is written</h3>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Format</th><th>How the output is made</th></tr></thead>
+      <tbody>
+        <tr><td>EDF, BDF</td><td>SANE Studio edits a copy of your uploaded file and replaces only the samples of the processed EEG channels. Labels, units, filter settings and per-channel sampling rates are kept, and every other channel stays bit-identical. Only the physical range of processed channels and, if you chose to, the personal fields change.</td></tr>
+        <tr><td>BrainVision</td><td>The .vhdr and .vmrk files are copied as uploaded; only the file references inside them are updated to the new names. The .eeg data keeps its number format, channel order and resolution. (If processed values no longer fit a 16-bit integer file, it is saved as 32-bit floating point instead, and the header says so.) Every marker is kept exactly.</td></tr>
+        <tr><td>EEGLAB</td><td>A new .set is written with the channel names, positions and events. A .set + .fdt upload comes back as .set + .fdt. A single .set comes back as a single compressed .set, about the size of the upload, unless the data exceed 2 GB, in which case it is written as .set + .fdt (a note says so).</td></tr>
+        <tr><td>FIF</td><td>Written with MNE. MEG and all other channels are kept. Outputs over 2 GB are split into numbered parts automatically.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>What is guaranteed to be the same</h3>
+    <ul>
+      <li>Channel names and order, sampling rate and number of samples.</li>
+      <li>Every event or annotation, with the same time and label.</li>
+      <li>Every non-EEG channel: EOG, ECG, EMG, triggers, sensors, MEG.</li>
+      <li>Missing samples. Gaps stored as missing values (NaN) are still missing in the output, in the same places.</li>
+    </ul>
+    <h3>The report file</h3>
+    <p><code>SANE_REPORT.json</code> is in the <span class="ui">Download all</span> zip, and also comes from <span class="ui">Export report (JSON)</span>. It holds everything shown on the Results screen in machine-readable form: the settings used (<code>alpha</code>, <code>bands</code>), one entry per recording under <code>recordings</code> (reference, biomarkers before and after, fingerprint, power deviation, dynamics per band, fit windows, notes, output files), and the cohort measures under <code>cohort</code> (variance reduction, Trait Leakage Index, attacker results). Keep it with your processed data as a record of what was done.</p>
+
+    <!-- ===================================================== 14 -->
+    <h2 id="privacy"><span class="num">14</span>Privacy and data handling</h2>
+    <ul>
+      <li><strong>Every upload gets its own session.</strong> Files from one session are never visible in another.</li>
+      <li><strong>Sessions are deleted automatically</strong> 60 minutes after you last used them. The top bar shows the time left.</li>
+      <li><strong>New session deletes everything immediately:</strong> uploads, working files and outputs.</li>
+      <li><strong>Files are used only to produce your output.</strong> Nothing is kept for any other purpose.</li>
+      <li><strong>Personal header fields are stripped by default</strong> (<a href="#settings">section 8</a>).</li>
+      <li><strong>When you run SANE Studio on your own computer, your data never leaves it.</strong> Working files go to the folder set by <code>SANE_DATA_DIR</code> (<a href="#admin">section 17</a>).</li>
+    </ul>
+    <div class="callout warn"><b>Limits</b>SANE Studio removes subject-level spectral and spatial biomarkers. It does not remove every individual trait. File names, the folder structure of a dataset, and information inside events (for example a label containing a name) are not changed. Check these yourself before sharing data.</div>
+
+    <!-- ===================================================== 15 -->
+    <h2 id="messages"><span class="num">15</span>Messages and what to do</h2>
+    <h3>While uploading</h3>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Message</th><th>Meaning and what to do</th></tr></thead>
+      <tbody>
+        <tr><td>No supported EEG files were found in that selection.</td><td>None of the chosen files has a supported extension. Choose .edf, .bdf, .vhdr/.vmrk/.eeg, .set/.fdt or .fif files.</td></tr>
+        <tr><td>Upload exceeds 1024 MB.</td><td>The session would go over its size limit. Upload fewer files at a time, or ask your administrator to raise the limit.</td></tr>
+        <tr><td>Network error during upload</td><td>The connection to the server was lost. Check that the server is still running and try again.</td></tr>
+        <tr><td>Wait for processing to finish before adding files.</td><td>Files cannot be added while a session is processing. Wait for the results, click Change settings, then Add more files.</td></tr>
+        <tr><td>… has no matching header file and was ignored</td><td>A companion file arrived without its header, for example a .fdt without its .set, or a .eeg without its .vhdr. Upload the header too.</td></tr>
+        <tr><td>… is not a supported EEG file and was ignored</td><td>The file is not one of the supported formats.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Why a recording is skipped</h3>
+    <p>These appear in red under the file name on the Review screen, after "Can't be processed".</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Reason</th><th>What to do</th></tr></thead>
+      <tbody>
+        <tr><td>This is an EyeLink eye-tracker file (SR Research)…</td><td>The file holds eye movements, not EEG. Look for the EEG file of the same session.</td></tr>
+        <tr><td>No scalp EEG found; this file has … channels</td><td>The file has no EEG channels, for example a MEG-only or empty-room .fif. It cannot be processed.</td></tr>
+        <tr><td>One scalp EEG channel found…</td><td>SANE needs at least two EEG channels.</td></tr>
+        <tr><td>Recording is shorter than 10 s.</td><td>Upload a longer recording.</td></tr>
+        <tr><td>This file holds epoched data; upload the continuous recording.</td><td>The file was already cut into trials. Use the continuous recording it came from.</td></tr>
+        <tr><td>This is part N of a recording split across several .fif files…</td><td>Upload all parts together, including the first one.</td></tr>
+        <tr><td>A companion file is missing…</td><td>Upload all files of the recording together: .vhdr + .vmrk + .eeg, or .set + .fdt.</td></tr>
+        <tr><td>The data file … is incomplete…</td><td>The BrainVision data file was cut off while it was copied or downloaded. Download it again.</td></tr>
+        <tr><td>This is a placeholder from DataLad/git-annex or Git LFS…</td><td>The real recording was never downloaded. Fetch it first, for example with <code>datalad get</code>.</td></tr>
+        <tr><td>… is not a valid EDF/BDF file (the header could not be parsed…)</td><td>The file is damaged or is not really in that format. Download or export it again.</td></tr>
+        <tr><td>Could not read …</td><td>Another reading problem; the rest of the message gives the detail from the file reader.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>During processing</h3>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Message</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>No usable scalp EEG (the scalp EEG in this file contains no signal)…</td><td>All EEG channels are flat, for example because the published file has zeros in place of EEG. The channels set aside are listed with their reasons.</td></tr>
+        <tr><td>The EEG values are physically impossible…</td><td>The numbers in the file cannot be voltages. The file is damaged, or its header names the wrong number format.</td></tr>
+        <tr><td>EEG channel N contains no valid samples</td><td>One EEG channel is missing for the whole recording.</td></tr>
+        <tr><td>None of the recordings could be processed. …</td><td>Every recording failed; each file's reason follows.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Notes on the Results screen</h3>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Note</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>No other subject in this upload has channels with these names, so this recording was matched to the normative reference instead of the cohort.</td><td>This recording's montage did not overlap with the others (or only partly, with a percentage). It was still neutralized, against the normative profile.</td></tr>
+        <tr><td>The recording has N s of missing samples (NaN)…</td><td>Gaps were left out of the measurements, bridged while filtering, and are still marked missing in the output.</td></tr>
+        <tr><td>The data exceed the 2 GB limit of a single MATLAB file…</td><td>A large single .set was written as .set + .fdt.</td></tr>
+        <tr><td>Wrote a fresh … file (…)</td><td>The original file could not be edited directly, so a new file was written instead. The data are correct, but some header details may differ from the original.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Sessions</h3>
+    <figure class="shot mid"><img src="manual/img/toast-expired.webp" width="1800" height="1125" alt="Message saying the session has expired" loading="lazy">
+      <figcaption><b>Figure 40.</b> Opening the address of a session that no longer exists shows a message at the bottom of the screen.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Message</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>That session has expired. Its data was deleted.</td><td>More than 60 minutes passed since the session was last used, or New session was clicked. Upload the files again.</td></tr>
+        <tr><td>This session is already processing.</td><td>The Neutralize button was pressed twice. Wait for the results.</td></tr>
+        <tr><td>There are no readable recordings to process.</td><td>Every recording in the session is skipped. Check the reasons on the Review screen.</td></tr>
+      </tbody>
+    </table></div>
+
+    <!-- ===================================================== 16 -->
+    <h2 id="troubleshooting"><span class="num">16</span>Troubleshooting</h2>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Problem</th><th>Solution</th></tr></thead>
+      <tbody>
+        <tr><td>"Address already in use" when starting</td><td>Another copy of SANE Studio, or another program, is using port 8000. Close the other copy, or start on a different port with <code>--port 8001</code> and open <code>http://localhost:8001</code>.</td></tr>
+        <tr><td>The page does not open</td><td>Check that the PowerShell window running the server is still open and shows no error, and that the address is <code>http://localhost:8000</code>.</td></tr>
+        <tr><td>The page looks like an older version</td><td>Press <kbd>Ctrl</kbd> + <kbd>F5</kbd> to reload without the browser cache.</td></tr>
+        <tr><td>Drive C: fills up</td><td>Working files go to the temp folder on C: by default. Set <code>$env:SANE_DATA_DIR</code> to another drive before starting the server (<a href="#start">section 2</a>), and click New session when you finish.</td></tr>
+        <tr><td>A very long recording is slow or fails</td><td>Processing needs memory of about twice the size of the recording's samples. Close other programs, or process long recordings one at a time.</td></tr>
+        <tr><td>A recording is missing from the results</td><td>It failed or was skipped. Click Change settings to see its status and reason on the Review screen.</td></tr>
+        <tr><td>My own theta/beta numbers differ slightly from the report</td><td>SANE measures on clean 4-second windows and leaves out artifacts. If your pipeline keeps different stretches of data, especially in long or noisy recordings, small differences are normal.</td></tr>
+        <tr><td>Spatial fingerprint barely changed</td><td>Spatial alignment was off, which is the automatic choice for the normative reference. Move the Spatial alignment slider up and run again if you want it removed.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Phones and tablets</h3>
+    <div class="side">
+      <figure class="shot narrow"><img src="manual/img/phone-home.webp" width="780" height="1688" alt="Upload screen on a phone" loading="lazy">
+        <figcaption><b>Figure 41.</b> The Upload screen on a phone.</figcaption></figure>
+      <div><p>SANE Studio works on small screens. The layout stacks into one column, and wide tables scroll sideways inside their own box. For reviewing many channels, a laptop or desktop screen is much more comfortable.</p></div>
+    </div>
+
+    <!-- ===================================================== 17 -->
+    <h2 id="admin"><span class="num">17</span>For administrators</h2>
+    <h3>Settings</h3>
+    <p>Set these environment variables before starting the server.</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Variable</th><th>Default</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>SANE_DATA_DIR</code></td><td>system temp folder</td><td>Where sessions are stored (uploads, working files, outputs).</td></tr>
+        <tr><td><code>SANE_TTL_MINUTES</code></td><td>60</td><td>Minutes of inactivity after which a session is deleted.</td></tr>
+        <tr><td><code>SANE_MAX_UPLOAD_MB</code></td><td>1024</td><td>Upload limit per session, in MB.</td></tr>
+        <tr><td><code>SANE_WORKERS</code></td><td>2</td><td>How many sessions can process at the same time. Others wait their turn.</td></tr>
+        <tr><td><code>PORT</code></td><td>7860</td><td>Port used inside the Docker container.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Hosting</h3>
+    <p>The project includes a <code>Dockerfile</code>, so it runs on any container host, including Hugging Face Spaces (Docker SDK), Google Cloud Run, Render and Fly.io. The <code>README.md</code> in the project folder has the details.</p>
+    <h3>API</h3>
+    <p>Everything the web page does goes through a documented HTTP API. Interactive documentation is at <code>/api/docs</code>.</p>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">GET /api/health</td><td>Server status and upload limit.</td></tr>
+        <tr><td class="mono">GET /api/samples</td><td>List the sample datasets.</td></tr>
+        <tr><td class="mono">POST /api/samples/{id}</td><td>Start a session from a sample dataset.</td></tr>
+        <tr><td class="mono">POST /api/jobs</td><td>Upload files (multipart field <code>files</code>) and create a session.</td></tr>
+        <tr><td class="mono">POST /api/jobs/{id}/files</td><td>Add files to a session.</td></tr>
+        <tr><td class="mono">GET /api/jobs/{id}</td><td>Session state, recordings, progress and report.</td></tr>
+        <tr><td class="mono">POST /api/jobs/{id}/run</td><td>Start processing. JSON body: <code>alpha</code>, <code>spatial_alpha</code> (null for auto), <code>reference</code>, <code>spatial_model</code>, <code>preserve_oob</code>, <code>anonymize</code>, <code>subjects</code>.</td></tr>
+        <tr><td class="mono">GET /api/jobs/{id}/download</td><td>All outputs and the report as a zip.</td></tr>
+        <tr><td class="mono">GET /api/jobs/{id}/download/{rid}</td><td>One recording's output.</td></tr>
+        <tr><td class="mono">DELETE /api/jobs/{id}</td><td>Delete a session now.</td></tr>
+        <tr><td class="mono">GET /api/jobs/{id}/rec/{rid}/…</td><td>Data for the viewer and charts: <code>meta</code>, <code>window</code>, <code>analysis</code>, <code>spatial</code>.</td></tr>
+      </tbody>
+    </table></div>
+    <h3>Tests</h3>
+    <p>Run these from the project folder. The last two need the server running.</p>
+    <pre>python tests/test_formats.py
+python tests/test_customer_uploads.py
+python tests/test_downloaded.py D:/sane_testdata http://localhost:8000</pre>
+    <p>To regenerate the screenshots in this manual, run <code>python tools/manual_screenshots.py http://localhost:8000</code>.</p>
+
+    <!-- ===================================================== 18 -->
+    <h2 id="glossary"><span class="num">18</span>Glossary</h2>
+    <dl class="gloss">
+      <dt>Band</dt><dd>A frequency range of the EEG: delta (δ) 1–4 Hz, theta (θ) 4–8 Hz, alpha (α) 8–13 Hz, beta (β) 13–30 Hz, gamma (γ) 30–45 Hz.</dd>
+      <dt>Band power</dt><dd>How much signal a channel has in a band, averaged over the recording.</dd>
+      <dt>Biomarker</dt><dd>A measurable property of the signal that is linked to a condition. The theta/beta ratio, for example, is often raised in ADHD and some other conditions.</dd>
+      <dt>Brain dynamics kept</dt><dd>How closely the output follows the input from moment to moment within each band. 1 means unchanged apart from intended scaling.</dd>
+      <dt>Cohort</dt><dd>The group of subjects uploaded together. Its average is the cohort reference.</dd>
+      <dt>Companion file</dt><dd>A file that belongs to a recording's header file: the .vmrk and .eeg of a BrainVision .vhdr, or the .fdt of an EEGLAB .set.</dd>
+      <dt>Continuous recording</dt><dd>A recording kept as one uninterrupted stretch of data, as opposed to an epoched file cut into trials.</dd>
+      <dt>Fit windows</dt><dd>The clean 4-second stretches of a recording used to measure it.</dd>
+      <dt>Normative profile</dt><dd>The built-in typical spectral shape used as the reference when there is no cohort.</dd>
+      <dt>Pass-through channel</dt><dd>A channel SANE does not change, such as EOG, ECG or a trigger. Also called an auxiliary channel.</dd>
+      <dt>Reference</dt><dd>The profile every subject is moved toward: the cohort average or the normative profile.</dd>
+      <dt>Session</dt><dd>One upload and everything made from it. It is deleted after 60 minutes without use.</dd>
+      <dt>Spatial fingerprint</dt><dd>The pattern of how a person's EEG channels move together. It can identify a person and can carry disease information.</dd>
+      <dt>Strength α</dt><dd>How far each subject's spectral profile moves toward the reference, from 0 (not at all) to 1 (all the way).</dd>
+      <dt>Spatial alignment</dt><dd>How far each subject's spatial fingerprint moves toward the reference, from 0 to 1.</dd>
+      <dt>Theta/beta ratio</dt><dd>Theta power divided by beta power, shown on a log scale. 0 means equal power in both bands.</dd>
+      <dt>Trait Leakage Index Λ</dt><dd>How well subjects can be told apart from their band-power features, from 0 (not at all) to 1 (fully).</dd>
+    </dl>
+    <p class="faint" style="margin-top:40px;font-size:13px">SANE Studio · Spectral Attribute Neutralization for EEG · user manual version 1.0, October 2026.</p>
+  </article>
+</main>
+
+<footer class="site">
+  <span>SANE Studio · Spectral Attribute Neutralization for EEG</span>
+  <span>SANE neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool.</span>
+</footer>
+<script>
+  document.getElementById("themeBtn").addEventListener("click", () => {
+    const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("sane-theme", document.documentElement.dataset.theme); } catch (_) { /* private mode */ }
+  });
+</script>
+</body>
+</html>
