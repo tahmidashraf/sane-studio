@@ -16,7 +16,7 @@ export function setup(cv, cssH, cssW) {
 
 export const BANDS = [["delta", 1, 4, "δ"], ["theta", 4, 8, "θ"], ["alpha", 8, 13, "α"], ["beta", 13, 30, "β"], ["gamma", 30, 45, "γ"]];
 
-function niceTicks(lo, hi, n = 5) {
+export function niceTicks(lo, hi, n = 5) {
   const span = hi - lo || 1;
   const step0 = span / n;
   const mag = 10 ** Math.floor(Math.log10(step0));

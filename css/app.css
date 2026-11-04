@@ -284,12 +284,23 @@ table.data tr.rejected .file { color: var(--text-2); }
 .plot canvas { display: block; width: 100%; }
 .readout { position: absolute; z-index: 3; pointer-events: none; padding: 6px 9px; border-radius: 7px; font: 11.5px var(--mono);
   background: var(--surface); border: 1px solid var(--line-strong); box-shadow: var(--shadow); white-space: nowrap; }
-.readout .ri { color: var(--in); } .readout .ro { color: var(--out); }
+.readout .ri { color: var(--in); } .readout .ro { color: var(--out); } .readout .rd { color: var(--diff); }
 .timeline { padding: 10px 14px 14px; border-top: 1px solid var(--line); }
 .timeline canvas { display: block; width: 100%; height: 54px; cursor: pointer; border-radius: 6px; }
 .timeline .nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 12px var(--mono); color: var(--text-2); }
 .timeline .nav .spacer { flex: 1; }
 .viewer-empty { padding: 60px 20px; text-align: center; color: var(--text-3); }
+.diffmap { position: relative; padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+.diffmap-head { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.diffmap-head h3 { margin: 0; font: 600 13.5px var(--sans); color: var(--text); }
+.diffmap-head .sum { font: 12px var(--mono); color: var(--text-2); }
+.diffmap-head .seg button { height: 28px; font-size: 12.5px; }
+.diffmap-leg { margin-bottom: 8px; }
+.diffmap canvas { display: block; width: 100%; cursor: pointer; }
+.legend i.blk { width: 12px; height: 10px; border-radius: 2px; }
+.legend i.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--diff); }
+.legend i.dash { height: 0; border-top: 2px dashed var(--text-2); border-radius: 0; background: none; }
+.legend i.sel { background: var(--ref-soft); box-shadow: inset 0 0 0 1px var(--ref); }
 
 /* analytics */
 .tabs { display: flex; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; }

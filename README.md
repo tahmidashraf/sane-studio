@@ -23,8 +23,9 @@ computer and the site needs no server. It is hosted as a static website on GitHu
 
 ## Run it on this PC
 
+From this folder:
+
 ```bash
-cd "E:/Brain signal work/sane-studio-browser"
 python -m http.server 8000
 ```
 
@@ -33,8 +34,12 @@ browsers only start the engine worker from a web address.)
 
 ## Server version
 
-The original server version (FastAPI, for very large files) lives in
-`E:\Brain signal work\sane-studio`, with a full backup in
-`E:\Brain signal work\sane-studio-server-backup-2026-10-18`. On the same input, both versions
-give the same output: on a sample EDF, 9 of 992,460 samples differ by one digital unit, from
+The server version (FastAPI, for very large files) is on the
+[`server` branch](https://github.com/tahmidashraf/sane-studio/tree/server) of this repository,
+with its Docker image and deployment files. On the same input, both versions give the same
+output: on a sample EDF, 9 of 992,460 samples differ by one digital unit, from
 floating-point rounding in different math libraries.
+
+## License
+
+The code is released under the [MIT License](LICENSE). The recordings in `samples/depression-rest` come from OpenNeuro ds003478 and stay under its CC0 terms.

@@ -208,6 +208,22 @@
               <div class="legend"><span><i style="background:var(--in)"></i>input</span><span><i style="background:var(--out)"></i>SANE output</span><span><i style="background:var(--diff)"></i>visible difference</span><span><i style="background:var(--bio)"></i>events</span></div>
             </div>
           </div>
+          <div class="diffmap">
+            <div class="diffmap-head">
+              <h3>Difference timestamps by channel</h3>
+              <div class="seg" id="diffMapSeg" role="group" aria-label="Difference graph type"><button data-v="line" aria-pressed="true">Line graph</button><button data-v="map" aria-pressed="false">Channel map</button></div>
+              <span class="sum" id="diffMapSum"></span>
+            </div>
+            <div class="diffmap-leg">
+              <div class="legend" id="diffLegLine"><span><i style="background:var(--text-3)"></i>each channel</span><span><i style="background:var(--ref)"></i>highlighted channel</span><span><i class="dot"></i>visible difference (peak of each span)</span><span><i class="dash"></i>visible threshold</span><span><i style="background:var(--bio)"></i>events</span></div>
+              <div class="legend" id="diffLegMap" hidden><span><i class="blk" style="background:var(--diff)"></i>visible difference</span><span><i style="background:var(--bio)"></i>events</span><span><i class="blk sel"></i>selected channel</span></div>
+            </div>
+            <div class="chart">
+              <canvas id="cvDiffMap" aria-label="Times in the current window where input and SANE output differ visibly, for every channel"></canvas>
+              <div class="readout" id="diffTip" hidden></div>
+            </div>
+            <div class="subtle-note" id="diffMapNote"></div>
+          </div>
         </div>
 
         <div class="panel" style="margin-top:14px">
