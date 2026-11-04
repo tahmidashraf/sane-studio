@@ -1,15 +1,3 @@
----
-title: SANE Studio
-emoji: 🧠
-colorFrom: green
-colorTo: blue
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
-short_description: Neutralize disease biomarkers in EEG, same file format back
----
-
 # SANE Studio
 
 SANE Studio removes subject-level neurological biomarkers from EEG recordings and gives the data back in the format it arrived in. Upload EDF, BDF, BrainVision, EEGLAB or FIF files. SANE sets each subject's spectral profile and spatial covariance to a shared reference, so a marker such as an elevated theta/beta ratio no longer distinguishes that person. Trial-level brain dynamics, events, EOG/ECG/trigger channels, sampling rate and channel layout are kept, so the dataset still serves the purpose it was collected for.
@@ -101,7 +89,11 @@ python tests/test_downloaded.py D:/sane_testdata http://localhost:8000
 
 ## Deploy
 
-The repository builds as a container on any host. On Hugging Face Spaces, create a Space with the **Docker** SDK and push this repository; the front matter above configures it. Settings, via environment variables:
+The `deploy` folder runs SANE Studio on one Oracle Cloud Always Free server, behind Caddy with free HTTPS. [deploy/README.md](deploy/README.md) has every step. The `Dockerfile` also runs on any other container host.
+
+A static version that runs entirely in the visitor's browser is on the `main` branch of this repository. It suits GitHub Pages and needs no server, but very large recordings can exceed what a browser tab allows.
+
+Settings, via environment variables:
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -121,3 +113,7 @@ python tests/test_formats.py     # round-trips every format
 
 - `samples/depression-rest`: three subjects from OpenNeuro ds003478 (CC0), 60 s each, resampled to 250 Hz.
 - `samples/hd128-motor`: synthetic 128-channel Biosemi recordings with a motor task; subject 3 carries an elevated theta biomarker.
+
+## License
+
+The code is released under the [MIT License](LICENSE). The recordings in `samples/depression-rest` come from OpenNeuro ds003478 and stay under its CC0 terms.

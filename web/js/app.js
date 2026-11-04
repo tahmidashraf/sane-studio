@@ -1,13 +1,34 @@
 // SANE Studio application controller.
 import { api } from "./api.js";
 import { Viewer, fmtT } from "./viewer.js";
-import { BANDS, css, drawPsd, drawGroupedBars, drawChannelBars, drawTopo, drawHeatmap, viridisCss } from "./charts.js";
+import { BANDS, css, drawPsd, drawBandShift, drawChannelBars, drawTopo, drawHeatmap, viridisCss } from "./charts.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const SCREENS = ["screenUpload", "screenConfig", "screenProc", "screenWork"];
 const state = { job: null, rid: null, meta: null, analysis: null, tab: "spectrum", spBand: 2, params: { reference: "auto", spatial_model: "kernel" } };
-const viewer = new Viewer(api, (c) => { $("psdChan").value = String(c); renderSpectrum(); });
+const viewer = new Viewer(api, (c) => { $("psdChan").value = String(c); renderSpectrum(); }, showDiff);
+
+// Strip above the traces: for the selected channel, when in the current window the input and
+// the SANE output are far enough apart to be told apart on screen.
+function showDiff(ch, d) {
+  const bar = $("diffBar");
+  if (ch == null || !d) { bar.hidden = true; return; }
+  const name = viewer.names[ch];
+  if (!d.spans.length) {
+    bar.innerHTML = `<span class="ch">${esc(name)}</span><span class="muted">input and output stay within one pixel column of each other in this window: no separation to see here.</span>`;
+    bar.hidden = false; return;
+  }
+  const list = d.spans.slice(0, 4).map(([a, b]) => `${a.toFixed(2)}–${b.toFixed(2)} s`).join(" · ");
+  const more = d.spans.length > 4 ? ` +${d.spans.length - 4} more` : "";
+  bar.innerHTML = `<span class="ch">${esc(name)}</span>`
+    + `<span>difference visible for <b>${d.total.toFixed(2)} s</b> of this window `
+    + `(${Math.round(d.frac * 100)}%), in ${d.spans.length} ${d.spans.length === 1 ? "span" : "spans"}</span>`
+    + `<span class="spans">${list}${more}</span>`
+    + `<span class="spacer"></span>`
+    + `<span class="muted">largest gap at ${d.worstT.toFixed(2)} s</span>`;
+  bar.hidden = false;
+}
 
 // ------------------------------------------------------------------ helpers
 function show(id) { for (const s of SCREENS) $(s).hidden = s !== id; window.scrollTo({ top: 0 }); }
@@ -357,12 +378,17 @@ function renderSpectrum() {
 
 function renderBands() {
   const A = state.analysis, bands = state.job.report.bands;
-  const meanRel = (rows) => rel(rows[0].map((_, b) => rows.reduce((s, r) => s + r[b], 0) / rows.length));
-  drawGroupedBars($("cvBands"), bands.map((b) => BANDS.find((x) => x[0] === b)[3]), [
-    { label: "input", color: css("--in"), values: meanRel(A.power_in) },
-    { label: "SANE output", color: css("--out"), values: meanRel(A.power_out) },
-    { label: "reference", color: css("--ref"), values: meanRel(A.power_ref) },
-  ], { height: 300, yLabel: "relative power" });
+  // one column of per-channel relative power per band, so the figure can show the spread
+  const cols = (rows) => bands.map((_, b) => rows.map((row) => rel(row)[b]));
+  const labels = bands.map((b) => [b, BANDS.find((x) => x[0] === b)[3]]);
+  drawBandShift($("cvBands"), labels, cols(A.power_in), cols(A.power_out), cols(A.power_ref),
+    { height: 320, yLabel: "relative power" });
+  const med = (v) => { const a = v.filter(Number.isFinite).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : 0; };
+  const shifts = bands.map((b, i) => {
+    const d = med(cols(A.power_out)[i]) - med(cols(A.power_in)[i]);
+    return `${BANDS.find((x) => x[0] === b)[3]} ${d > 0 ? "+" : ""}${d.toFixed(3)}`;
+  }).join(" · ");
+  $("bandsNote").textContent = `Each band shows the spread over channels: box = middle half, whisker = 5th to 95th percentile, thick line = median. The pink arrow is the median shift from input to output, and the dashed blue line is the reference the defense aims at. Median shift per band: ${shifts}.`;
   const dev = (rows) => rows.map((row, c) => logTb(row) - logTb(A.power_ref[c]));
   drawChannelBars($("cvTb"), dev(A.power_in), dev(A.power_out), 0, { height: 260 });
 }

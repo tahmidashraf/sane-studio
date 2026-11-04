@@ -576,8 +576,23 @@
       <li>The <kbd>‹</kbd> and <kbd>›</kbd> buttons move back or forward by one window.</li>
       <li>The <kbd>←</kbd> and <kbd>→</kbd> arrow keys do the same, as long as the cursor is not in a text box or a menu.</li>
       <li>The line next to the buttons reads, for example, <code>0 s – 10 s of 1:00 · 66 channels · 250 Hz</code>.</li>
-      <li>The legend on the right repeats the colours: input, SANE output, events.</li>
+      <li>The legend on the right repeats the colours: input, SANE output, visible difference, events.</li>
     </ul>
+
+    <h3>Difference strip and difference graph</h3>
+    <p>When a channel is selected, a strip appears above the traces. It says for how long the input and the output can be told apart in this window, lists the longest time spans and gives the time of the largest gap. Two traces count as apart when they are at least 1.5 pixels from each other at the current amplitude scale, so the answer changes with <kbd>−</kbd> and <kbd>+</kbd>. A dense 64-channel view often shows no separation until you amplify it; that is correct, not a fault.</p>
+    <p>The panel <strong>Difference timestamps by channel</strong>, under the timeline, shows the same time spans for every channel in the window. Its first line says how many channels differ and which one differs most. It follows the window, band, channel group, scale and Events settings of the viewer. Two buttons next to the title choose how it is drawn.</p>
+    <figure class="shot"><img src="/static/manual/img/viewer-diff-line.webp" width="1800" height="786" alt="Line graph of the input-output gap of every channel, with dots at the difference timestamps" loading="lazy">
+      <figcaption><b>Figure 33.</b> Line graph: how far the output sits from the input, in µV, for every channel over the window.</figcaption></figure>
+    <figure class="shot"><img src="/static/manual/img/viewer-diff-map.webp" width="1800" height="1090" alt="Channel-by-time map of the difference timestamps" loading="lazy">
+      <figcaption><b>Figure 34.</b> Channel map: the same time spans as blocks, one row per channel.</figcaption></figure>
+    <div class="table-wrap"><table class="opt">
+      <thead><tr><th>View</th><th>How to read it</th></tr></thead>
+      <tbody>
+        <tr><td>Line graph</td><td>Each grey line is one channel. The blue line is the selected channel, or the channel that differs most if none is selected. A pink dot marks the largest gap of each time span, and the dashed line is the gap that becomes visible at the current scale. <strong>Hover</strong> over a dot to read its channel, time, gap and span. <strong>Click</strong> a dot to select its channel.</td></tr>
+        <tr><td>Channel map</td><td>Each row is one channel, and each pink block is one time span. The column on the right gives the share of the window with a visible difference. <strong>Hover</strong> to read the channel, the time and the span. <strong>Click</strong> a row to select that channel.</td></tr>
+      </tbody>
+    </table></div>
 
     <!-- ===================================================== 12 -->
     <h2 id="tabs"><span class="num">12</span>Analysis tabs</h2>
@@ -585,32 +600,32 @@
 
     <h3>Spectrum</h3>
     <figure class="shot"><img src="/static/manual/img/tab-spectrum.webp" width="1800" height="809" alt="Spectrum tab with power spectra and statistic cards" loading="lazy">
-      <figcaption><b>Figure 33.</b> The Spectrum tab.</figcaption></figure>
+      <figcaption><b>Figure 35.</b> The Spectrum tab.</figcaption></figure>
     <p>The chart shows the power spectrum in decibels, input in amber and output in teal. The theta and beta bands, which form the biomarker, are shaded violet. Outside 1–45 Hz the two curves match when <span class="ui">Keep content outside 1–45 Hz</span> was on.</p>
     <p>The <span class="ui">Channel</span> menu shows the mean of all EEG channels (default) or any single channel. Clicking a trace in the viewer also picks it here. The three cards give, for that selection, the log theta/beta ratio, the relative theta power and the relative beta power: input, then output, with the reference value underneath.</p>
 
     <h3>Band power</h3>
     <figure class="shot"><img src="/static/manual/img/tab-bands.webp" width="1800" height="679" alt="Band power tab" loading="lazy">
-      <figcaption><b>Figure 34.</b> The Band power tab.</figcaption></figure>
+      <figcaption><b>Figure 36.</b> The Band power tab.</figcaption></figure>
     <p>The left chart shows each band's share of the total power, averaged over channels, for the input, the output and the reference. The output bars should match the reference bars. The right chart shows every EEG channel's theta/beta deviation from the reference, as a pair of bars: input in amber, output in teal. Output deviations collapse onto the zero line.</p>
 
     <h3>Topography</h3>
     <figure class="shot"><img src="/static/manual/img/tab-topo.webp" width="1800" height="835" alt="Topography tab with three head maps" loading="lazy">
-      <figcaption><b>Figure 35.</b> The Topography tab showing the theta/beta ratio across the scalp.</figcaption></figure>
+      <figcaption><b>Figure 37.</b> The Topography tab showing the theta/beta ratio across the scalp.</figcaption></figure>
     <p>Three head maps, seen from above with the nose at the top, show how a measure is spread over the scalp: <strong>Input</strong>, <strong>SANE output</strong> and <strong>Reference</strong>. White dots are electrodes. The output map should look like the reference map.</p>
     <p>The <span class="ui">Map</span> menu chooses the measure: theta/beta ratio (log, default), or the relative power of delta, theta, alpha, beta or gamma. All three maps share one colour scale, shown underneath with its range. The note under the scale says how many channels have a known position. Channels without one are left off the maps.</p>
     <figure class="shot"><img src="/static/manual/img/tab-topo-alpha.webp" width="1800" height="835" alt="Topography tab showing relative alpha power" loading="lazy">
-      <figcaption><b>Figure 36.</b> The same tab with the map set to relative α power.</figcaption></figure>
+      <figcaption><b>Figure 38.</b> The same tab with the map set to relative α power.</figcaption></figure>
 
     <h3>Spatial fingerprint</h3>
     <figure class="shot"><img src="/static/manual/img/tab-spatial.webp" width="1800" height="900" alt="Spatial fingerprint tab with three correlation matrices" loading="lazy">
-      <figcaption><b>Figure 37.</b> The Spatial fingerprint tab in the alpha band.</figcaption></figure>
+      <figcaption><b>Figure 39.</b> The Spatial fingerprint tab in the alpha band.</figcaption></figure>
     <p>Each square is a channel-by-channel correlation matrix: every row and column is one EEG channel, and the colour shows how strongly two channels move together in the chosen band, from −1 (blue, opposite) through 0 (white) to +1 (red, together). The three squares are the input, the SANE output and the reference.</p>
     <p>The <span class="ui">Band</span> buttons choose delta, theta, alpha (default), beta or gamma. The <code>distance</code> numbers above the first two squares say how far each one is from the reference: the input distance is the subject's spatial fingerprint, and the output distance shows how much of it is left. With spatial alignment off, the two distances stay similar, as intended.</p>
 
     <h3>Privacy report</h3>
     <figure class="shot"><img src="/static/manual/img/tab-report.webp" width="1800" height="1586" alt="Privacy report tab" loading="lazy">
-      <figcaption><b>Figure 38.</b> The Privacy report for the depression sample: between-subject theta/beta variance down 99.99 percent.</figcaption></figure>
+      <figcaption><b>Figure 40.</b> The Privacy report for the depression sample: between-subject theta/beta variance down 99.99 percent.</figcaption></figure>
     <p>The report covers the whole session, not only the selected recording. The four cards at the top:</p>
     <div class="table-wrap"><table class="opt">
       <thead><tr><th>Card</th><th>Meaning</th></tr></thead>
@@ -640,7 +655,7 @@
 
     <h3>Dark theme</h3>
     <figure class="shot"><img src="/static/manual/img/workspace-dark.webp" width="1800" height="1125" alt="Results screen in the dark theme" loading="lazy">
-      <figcaption><b>Figure 39.</b> The Results screen in the dark theme, switched with the moon icon in the top bar.</figcaption></figure>
+      <figcaption><b>Figure 41.</b> The Results screen in the dark theme, switched with the moon icon in the top bar.</figcaption></figure>
 
     <!-- ===================================================== 13 -->
     <h2 id="outputs"><span class="num">13</span>Your output files</h2>
@@ -732,7 +747,7 @@
     </table></div>
     <h3>Sessions</h3>
     <figure class="shot mid"><img src="/static/manual/img/toast-expired.webp" width="1800" height="1125" alt="Message saying the session has expired" loading="lazy">
-      <figcaption><b>Figure 40.</b> Opening the address of a session that no longer exists shows a message at the bottom of the screen.</figcaption></figure>
+      <figcaption><b>Figure 42.</b> Opening the address of a session that no longer exists shows a message at the bottom of the screen.</figcaption></figure>
     <div class="table-wrap"><table class="opt">
       <thead><tr><th>Message</th><th>Meaning</th></tr></thead>
       <tbody>
@@ -760,7 +775,7 @@
     <h3>Phones and tablets</h3>
     <div class="side">
       <figure class="shot narrow"><img src="/static/manual/img/phone-home.webp" width="780" height="1688" alt="Upload screen on a phone" loading="lazy">
-        <figcaption><b>Figure 41.</b> The Upload screen on a phone.</figcaption></figure>
+        <figcaption><b>Figure 43.</b> The Upload screen on a phone.</figcaption></figure>
       <div><p>SANE Studio works on small screens. The layout stacks into one column, and wide tables scroll sideways inside their own box. For reviewing many channels, a laptop or desktop screen is much more comfortable.</p></div>
     </div>
 
@@ -779,7 +794,7 @@
       </tbody>
     </table></div>
     <h3>Hosting</h3>
-    <p>The project includes a <code>Dockerfile</code>, so it runs on any container host, including Hugging Face Spaces (Docker SDK), Google Cloud Run, Render and Fly.io. The <code>README.md</code> in the project folder has the details.</p>
+    <p>The server version includes a <code>Dockerfile</code>, so it runs on any container host. Its <code>deploy</code> folder runs it on one Oracle Cloud Always Free server behind Caddy, with free HTTPS; <code>deploy/README.md</code> has every step. The browser version is a static website for GitHub Pages; <code>DEPLOY.md</code> in its folder has every step.</p>
     <h3>API</h3>
     <p>Everything the web page does goes through a documented HTTP API. Interactive documentation is at <code>/api/docs</code>.</p>
     <div class="table-wrap"><table class="opt">

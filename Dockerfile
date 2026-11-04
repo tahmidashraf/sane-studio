@@ -1,5 +1,5 @@
-# SANE Studio: production image. Runs on Hugging Face Spaces (Docker SDK),
-# Google Cloud Run, Render, Fly.io or any container host.
+# SANE Studio: production image. Runs on any container host; deploy/ runs it on
+# one Oracle Cloud server behind Caddy.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SANE_WORKERS=2 \
     PORT=7860
 
-# Run as an unprivileged user (uid 1000, as Hugging Face Spaces expects).
+# Run as an unprivileged user.
 RUN useradd --create-home --uid 1000 sane
 WORKDIR /home/sane/app
 

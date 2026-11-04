@@ -16,7 +16,7 @@ export function setup(cv, cssH, cssW) {
 
 export const BANDS = [["delta", 1, 4, "δ"], ["theta", 4, 8, "θ"], ["alpha", 8, 13, "α"], ["beta", 13, 30, "β"], ["gamma", 30, 45, "γ"]];
 
-function niceTicks(lo, hi, n = 5) {
+export function niceTicks(lo, hi, n = 5) {
   const span = hi - lo || 1;
   const step0 = span / n;
   const mag = 10 ** Math.floor(Math.log10(step0));
@@ -84,6 +84,90 @@ export function drawPsd(cv, freqs, inDb, outDb, { height = 300, title = "" } = {
   ctx.save(); ctx.translate(13, box.y + box.h / 2); ctx.rotate(-Math.PI / 2);
   ctx.fillText("power (dB re 1 µV²/Hz)", 0, 0); ctx.restore();
   if (title) { ctx.textAlign = "left"; ctx.fillStyle = css("--text-2"); ctx.fillText(title, box.x + 6, box.y + 14); }
+}
+
+// ------------------------------------------------------------------ band-power distributions
+// For each band: the spread over channels (5-95% whisker, inter-quartile box, median tick) for
+// input and output, the reference level, and an arrow for the median shift. Far more of the data
+// than a bar of means, and it shows whether the whole montage moved or only a few channels.
+function quantiles(v) {
+  const a = v.filter(Number.isFinite).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const q = (f) => { const i = f * (a.length - 1), lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); };
+  return { p05: q(0.05), p25: q(0.25), p50: q(0.5), p75: q(0.75), p95: q(0.95), n: a.length };
+}
+
+export function drawBandShift(cv, bands, inCols, outCols, refCols, { height = 300, yLabel = "relative power" } = {}) {
+  const { ctx, w, h } = setup(cv, height);
+  const box = { x: 54, y: 20, w: w - 66, h: h - 74 };
+  const qin = inCols.map(quantiles), qout = outCols.map(quantiles);
+  const refs = refCols.map((c) => quantiles(c)?.p50 ?? 0);
+  const all = qin.concat(qout).filter(Boolean).flatMap((q) => [q.p05, q.p95]).concat(refs);
+  let lo = Math.min(...all), hi = Math.max(...all);
+  const pad = (hi - lo) * 0.12 || 0.05; lo = Math.max(0, lo - pad); hi += pad;
+  const ys = (v) => box.y + (1 - (v - lo) / (hi - lo)) * box.h;
+  const slot = box.w / bands.length;
+  // biomarker bands carry a soft backdrop, as in the spectrum
+  bands.forEach(([name], i) => {
+    if (name !== "theta" && name !== "beta") return;
+    ctx.fillStyle = css("--bio-soft");
+    ctx.fillRect(box.x + slot * i, box.y, slot, box.h);
+  });
+  axes(ctx, box, [], niceTicks(lo, hi, 5), () => 0, ys, () => "", (v) => v.toFixed(2));
+  const halfBox = Math.min(17, slot * 0.17);
+  bands.forEach(([name, sym], i) => {
+    const cx = box.x + slot * (i + 0.5);
+    const pos = [cx - slot * 0.19, cx + slot * 0.19];
+    [[qin[i], css("--in")], [qout[i], css("--out")]].forEach(([q, color], k) => {
+      if (!q) return;
+      const x = pos[k];
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(x, ys(q.p05)); ctx.lineTo(x, ys(q.p95)); ctx.stroke();      // whisker
+      for (const v of [q.p05, q.p95]) { ctx.beginPath(); ctx.moveTo(x - 4, ys(v)); ctx.lineTo(x + 4, ys(v)); ctx.stroke(); }
+      ctx.globalAlpha = 0.26;
+      ctx.fillRect(x - halfBox / 2, ys(q.p75), halfBox, Math.max(1, ys(q.p25) - ys(q.p75)));  // IQR
+      ctx.globalAlpha = 1;
+      ctx.strokeRect(x - halfBox / 2, ys(q.p75), halfBox, Math.max(1, ys(q.p25) - ys(q.p75)));
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(x - halfBox / 2, ys(q.p50)); ctx.lineTo(x + halfBox / 2, ys(q.p50)); ctx.stroke();
+    });
+    // median shift, drawn as an arrow from input to output
+    if (qin[i] && qout[i]) {
+      const y0 = ys(qin[i].p50), y1 = ys(qout[i].p50), xm = cx;
+      if (Math.abs(y1 - y0) > 2) {
+        ctx.strokeStyle = css("--diff"); ctx.fillStyle = css("--diff"); ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(pos[0] + halfBox / 2 + 2, y0); ctx.lineTo(xm, y0);
+        ctx.lineTo(xm, y1); ctx.lineTo(pos[1] - halfBox / 2 - 6, y1); ctx.stroke();
+        const dir = Math.sign(y1 - y0) || 1, tipX = pos[1] - halfBox / 2 - 2;
+        ctx.beginPath(); ctx.moveTo(tipX, y1); ctx.lineTo(tipX - 5, y1 - 3.2); ctx.lineTo(tipX - 5, y1 + 3.2); ctx.closePath(); ctx.fill();
+        const d = qout[i].p50 - qin[i].p50;
+        ctx.font = `600 10.5px ${css("--mono")}`; ctx.textAlign = "center"; ctx.textBaseline = dir > 0 ? "bottom" : "top";
+        ctx.fillText(`${d > 0 ? "+" : ""}${d.toFixed(3)}`, xm, y0 - dir * 3);
+      }
+    }
+    // reference level
+    ctx.strokeStyle = css("--ref"); ctx.lineWidth = 1.6; ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(cx - slot * 0.34, ys(refs[i])); ctx.lineTo(cx + slot * 0.34, ys(refs[i])); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = css("--text-2"); ctx.font = `600 13px ${css("--mono")}`;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(sym, cx, box.y + box.h + 7);
+    ctx.fillStyle = css("--text-3"); ctx.font = `10.5px ${css("--mono")}`;
+    ctx.fillText(name, cx, box.y + box.h + 23);
+  });
+  // legend
+  let lx = box.x;
+  ctx.font = `11px ${css("--mono")}`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
+  const items = [["input", css("--in")], ["SANE output", css("--out")], ["reference", css("--ref")], ["median shift", css("--diff")]];
+  for (const [label, color] of items) {
+    ctx.fillStyle = color; ctx.fillRect(lx, h - 11, 12, 7);
+    ctx.fillStyle = css("--text-2"); ctx.fillText(label, lx + 17, h - 7);
+    lx += ctx.measureText(label).width + 44;
+  }
+  if (yLabel) { ctx.save(); ctx.translate(13, box.y + box.h / 2); ctx.rotate(-Math.PI / 2); ctx.textAlign = "center"; ctx.fillStyle = css("--text-3"); ctx.fillText(yLabel, 0, 0); ctx.restore(); }
+  const nch = qin[0]?.n ?? 0;
+  ctx.fillStyle = css("--text-3"); ctx.font = `10.5px ${css("--mono")}`; ctx.textAlign = "right"; ctx.textBaseline = "top";
+  ctx.fillText(`box: IQR · whisker: 5-95% · ${nch} channels`, box.x + box.w, box.y - 14);
 }
 
 // ------------------------------------------------------------------ grouped bars

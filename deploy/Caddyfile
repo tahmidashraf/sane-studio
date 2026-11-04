@@ -1,0 +1,5 @@
+# HTTPS certificate from Let's Encrypt for SITE_ADDRESS, then everything goes to the app.
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy app:7860
+}

@@ -1,0 +1,25 @@
+# SANE Studio on one server: the app behind Caddy, which serves HTTPS on a free
+# <ip-with-dashes>.sslip.io name. deploy/oracle.sh writes SITE_ADDRESS into deploy/.env.
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    # sessions live in the container's /tmp and are deleted after SANE_TTL_MINUTES (Dockerfile)
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:

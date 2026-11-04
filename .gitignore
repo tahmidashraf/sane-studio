@@ -4,3 +4,6 @@ __pycache__/
 # large generated test corpus: rebuild with `python tests/make_samples.py`
 tests/samples/
 tests/native_like/
+# server address for deploy/oracle.sh, kept local
+deploy/server.env
+deploy/.env

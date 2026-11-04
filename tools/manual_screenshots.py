@@ -122,6 +122,12 @@ def main():
         pg.click("#scaleUp")
         pg.wait_for_timeout(500)
         shot(viewer, "viewer-scale-up")
+        diff = pg.locator(".diffmap")
+        shot(diff, "viewer-diff-line")
+        pg.click("#diffMapSeg [data-v=map]")
+        pg.wait_for_timeout(500)
+        shot(diff, "viewer-diff-map")
+        pg.click("#diffMapSeg [data-v=line]")
         pg.click("#scaleDown")
         pg.click("#scaleDown")
 
