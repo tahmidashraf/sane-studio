@@ -239,9 +239,9 @@ tr.sane-row td { background: var(--brand-soft); font-weight: 600; }
 .table-block + .table-block { margin-top: 30px; }
 .arrow { color: var(--text-3); padding-inline: 3px; }
 
-/* ------------------------------------------------------------ contributions (three cards) */
-.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 860px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+/* ------------------------------------------------------------ contributions (four cards, 2 x 2) */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 700px) { .flow { grid-template-columns: minmax(0, 1fr); } }
 .flow-card { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; border: 1px solid var(--line);
   border-radius: 12px; background: var(--surface); }
 .flow-top { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
@@ -340,7 +340,7 @@ footer a { color: var(--text-2); }
     <div class="sec-head"><h2>Abstract</h2></div>
     <div class="prose">
       <!-- The abstract is the paper's abstract, word for word. -->
-      <p>Electroencephalography (EEG) measures the electrical activity of the brain with sensors placed on the scalp. Brain–computer interfaces (BCIs) turn these signals into commands. Laboratories share EEG recordings openly after removing some information, so that others can build better decoders. However, the signal itself still carries health information that no participant agreed to share. Earlier studies showed that EEG can reveal who a person is. Yet no known study has both measured how much health information leaks and removed it from the shared signal. To address this gap, we first show that shared EEG leaks health information about diseases and disorders. We then propose SANE (Spectral Attribute Neutralization for EEG), a defense that neutralizes this information before release. Our study makes three main contributions. First, we sorted the information in a recording into task, identity and health classes. On six public clinical datasets of Parkinson’s disease, depression and attention-deficit/hyperactivity disorder (ADHD), our attackers recovered the diagnosis in four. Second, we created SANE, which removes the health information from each recording but keeps the brain activity that BCIs use. We also propose a Trait Leakage Index (<i>Λ</i>) that measures how much health information still leaks. Third, we built SANE Studio, a free and open-source web tool that runs SANE on a user’s own EEG files in the browser. We tested SANE on five public BCI datasets. The ratio of theta to beta brain waves is a marker linked to attention disorders. Our results show that before SANE, an attacker estimated this ratio for each person almost perfectly. After SANE, the same attacker did no better than random guessing, and <i>Λ</i> fell by 98 to 99%. The neutralized data still worked for the BCI. Its accuracy in recognizing the movement barely changed. On BCI Competition IV-2a it was 77.2% both before and after SANE, and on the other datasets it never dropped by more than 3.2 percentage points.</p>
+      <p>Electroencephalography (EEG) measures the electrical activity of the brain with sensors placed on the scalp. Brain–computer interfaces (BCIs) turn these signals into commands. Laboratories share EEG recordings openly after removing names and other identifiers, so that others can build better decoders. However, the signal itself still carries health information that no participant agreed to share. Earlier studies showed that EEG can reveal who a person is. Yet no known study has both measured the health information in shared EEG and removed it from the signal. To address this gap, our study makes four main contributions. First, we sorted the information in a recording into task, identity and health classes. We attacked six public clinical datasets of Parkinson’s disease, depression and attention-deficit/hyperactivity disorder (ADHD), and the attackers recovered the diagnosis in four of them. Second, we created SANE (Spectral Attribute Neutralization for EEG), a defense that removes the health markers from each recording before release but keeps the brain activity that BCIs use. Third, we proposed a Trait Leakage Index (<i>Λ</i>) that measures how much of the leak remains. Fourth, we built SANE Studio, a free and open-source web tool that runs SANE on a user’s own EEG files in the browser. We tested SANE on five public BCI datasets using the theta-to-beta ratio, a brain-wave marker linked to attention disorders. Before SANE, an attacker estimated this ratio for each person almost perfectly. After SANE, the same attacker did no better than random guessing, and <i>Λ</i> fell by 98 to 99%. At the same time, the neutralized data still worked for the BCI. Movement decoding accuracy stayed almost the same. It was 77.2% both before and after SANE on BCI Competition IV-2a, and on the other datasets it never dropped by more than 3.2 percentage points.</p>
       <p class="keywords"><b>Keywords</b>&ensp;Brain–computer interfaces, electroencephalography, attribute inference, privacy-preserving signal processing, biomarker neutralization</p>
     </div>
   </section>
@@ -348,24 +348,30 @@ footer a { color: var(--text-2); }
   <!-- ================================================================ contributions -->
   <section id="contributions">
     <div class="sec-head">
-      <h2>Our three main contributions</h2>
-      <p>We show that shared EEG leaks health information, we propose SANE to remove it, and we built SANE Studio so that anyone can apply SANE to their own recordings.</p>
+      <h2>Our four main contributions</h2>
+      <p>We found that shared EEG leaks health information, created SANE to remove it, proposed a way to measure what remains, and built a free tool that runs SANE on your own recordings.</p>
     </div>
     <ol class="flow">
       <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Contribution 1</span><span class="tag clin">6 clinical cohorts</span></div>
+        <div class="flow-top"><span class="flow-n">Contribution 1</span><span class="tag clin">6 clinical datasets</span></div>
         <h3>Shared EEG leaks health information</h3>
-        <p>We sort the information in a recording into task, identity and health classes. Then we attack six public cohorts of patients and healthy controls, two each for Parkinson’s disease, major depressive disorder (MDD) and attention-deficit/hyperactivity disorder (ADHD). Our reinforcement-learning attackers reveal a few channels and guess the diagnosis.</p>
-        <p class="flow-fact"><b class="before">4 of 6</b> cohorts gave their diagnosis away, for example 0.942 accuracy against 0.776 for random probing on ADHD1.</p>
+        <p>We sorted the information in a recording into task, identity and health classes. We then attacked six public clinical datasets, two each for Parkinson’s disease, major depressive disorder (MDD) and attention-deficit/hyperactivity disorder (ADHD). Our attackers read a few channels and guessed the diagnosis.</p>
+        <p class="flow-fact"><b class="before">4 of 6</b> datasets gave their diagnosis away, for example 0.942 accuracy against 0.776 for random probing on ADHD1.</p>
       </li>
       <li class="flow-card">
         <div class="flow-top"><span class="flow-n">Contribution 2</span><span class="tag">5 motor BCI datasets</span></div>
-        <h3>SANE and the Trait Leakage Index <i>Λ</i></h3>
-        <p>SANE removes the health information from each recording but keeps the brain activity that BCIs use. The Trait Leakage Index <i>Λ</i> measures how much health information still leaks. We test both on five motor BCI datasets against added noise, two learned defenses and differential privacy.</p>
-        <p class="flow-fact">After SANE the attacker did no better than guessing on <b>5 of 5</b> datasets and <i>Λ</i> fell by 98 to 99%. Accuracy dropped by at most 3.2 points, and on BCI IV-2a it was 77.2% before and after.</p>
+        <h3>SANE</h3>
+        <p>A defense that removes the health markers from each recording before release but keeps the brain activity that BCIs use. We tested it on five public BCI datasets against added noise, two learned defenses and differential privacy.</p>
+        <p class="flow-fact">After SANE the attacker did no better than random guessing on <b>5 of 5</b> datasets. Movement decoding accuracy stayed at 77.2% on BCI IV-2a and never dropped by more than 3.2 points.</p>
       </li>
       <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Contribution 3</span><span class="tag out">Free and open source</span></div>
+        <div class="flow-top"><span class="flow-n">Contribution 3</span><span class="tag">Measure</span></div>
+        <h3>Trait Leakage Index <i>Λ</i></h3>
+        <p>A score of how much of the leak remains in a recording. It rates how strongly each feature identifies a person without helping the task, averaged over all features.</p>
+        <p class="flow-fact">After SANE, <i>Λ</i> fell by <b>98 to 99%</b> on all five BCI datasets.</p>
+      </li>
+      <li class="flow-card">
+        <div class="flow-top"><span class="flow-n">Contribution 4</span><span class="tag out">Free and open source</span></div>
         <h3>SANE Studio</h3>
         <p>A web tool that runs SANE on your own EEG files inside the browser. It reads EDF, BDF, BrainVision, EEGLAB and FIF recordings and returns each one in the format it came in.</p>
         <p class="flow-fact"><b>Nothing is uploaded.</b> All 21 recordings of an OpenNeuro reference set were processed and checked. <a href="studio.html">Open SANE Studio</a></p>
