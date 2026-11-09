@@ -239,12 +239,12 @@ tr.sane-row td { background: var(--brand-soft); font-weight: 600; }
 .table-block + .table-block { margin-top: 30px; }
 .arrow { color: var(--text-3); padding-inline: 3px; }
 
-/* ------------------------------------------------------------ approach (four steps) */
-.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 540px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+/* ------------------------------------------------------------ contributions (three cards) */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .flow { grid-template-columns: minmax(0, 1fr); } }
 .flow-card { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; border: 1px solid var(--line);
   border-radius: 12px; background: var(--surface); }
-.flow-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.flow-top { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .flow-n { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
 .tag { font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong);
   color: var(--text-2); background: var(--bg); white-space: nowrap; }
@@ -283,7 +283,7 @@ footer a { color: var(--text-2); }
     </a>
     <nav class="nav" aria-label="Sections">
       <a href="#abstract">Abstract</a>
-      <a href="#approach">Approach</a>
+      <a href="#contributions">Contributions</a>
       <a href="#studio">SANE Studio</a>
       <a href="#method">Method</a>
       <a href="#results">Results</a>
@@ -345,36 +345,30 @@ footer a { color: var(--text-2); }
     </div>
   </section>
 
-  <!-- ================================================================ approach -->
-  <section id="approach">
+  <!-- ================================================================ contributions -->
+  <section id="contributions">
     <div class="sec-head">
-      <h2>From leak to neutralized EEG</h2>
-      <p>The work runs in four steps. It first measures how much disease information public clinical EEG gives away, then builds SANE to remove it, and then applies SANE to ordinary BCI recordings that carry the same kind of marker.</p>
+      <h2>Our three main contributions</h2>
+      <p>We show that shared EEG leaks health information, we propose SANE to remove it, and we built SANE Studio so that anyone can apply SANE to their own recordings.</p>
     </div>
     <ol class="flow">
       <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Step 1</span><span class="tag clin">6 clinical cohorts</span></div>
-        <h3>Find the leak</h3>
-        <p>Six public cohorts of patients and healthy controls, two each for Parkinson’s disease, major depressive disorder (MDD) and attention-deficit/hyperactivity disorder (ADHD). Reinforcement-learning attackers reveal a few channels, read their band powers, and guess the diagnosis.</p>
-        <p class="flow-fact"><b class="before">4 of 6</b> cohorts gave their labels away, for example 0.942 accuracy against 0.776 for random probing on ADHD1.</p>
+        <div class="flow-top"><span class="flow-n">Contribution 1</span><span class="tag clin">6 clinical cohorts</span></div>
+        <h3>Shared EEG leaks health information</h3>
+        <p>We sort the information in a recording into task, identity and health classes. Then we attack six public cohorts of patients and healthy controls, two each for Parkinson’s disease, major depressive disorder (MDD) and attention-deficit/hyperactivity disorder (ADHD). Our reinforcement-learning attackers reveal a few channels and guess the diagnosis.</p>
+        <p class="flow-fact"><b class="before">4 of 6</b> cohorts gave their diagnosis away, for example 0.942 accuracy against 0.776 for random probing on ADHD1.</p>
       </li>
       <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Step 2</span><span class="tag">Method</span></div>
-        <h3>Build SANE</h3>
-        <p>The attackers needed only band power. The leak sits in each subject’s spectral and spatial profile, which stays nearly the same across all of that subject’s trials, while the task lives in how trials differ. Sorting what a recording holds into task, identity and health classes shows what to keep and what to remove. SANE keeps the task class and equalizes the subject-level profile with spectral standardization and spatial whitening.</p>
-        <p class="flow-fact"><b>No labels</b> are used to fit SANE, so no diagnosis or attribute has to be chosen in advance.</p>
+        <div class="flow-top"><span class="flow-n">Contribution 2</span><span class="tag">5 motor BCI datasets</span></div>
+        <h3>SANE and the Trait Leakage Index <i>Λ</i></h3>
+        <p>SANE removes the health information from each recording but keeps the brain activity that BCIs use. The Trait Leakage Index <i>Λ</i> measures how much health information still leaks. We test both on five motor BCI datasets against added noise, two learned defenses and differential privacy.</p>
+        <p class="flow-fact">After SANE the attacker did no better than guessing on <b>5 of 5</b> datasets and <i>Λ</i> fell by 98 to 99%. Accuracy dropped by at most 3.2 points, and on BCI IV-2a it was 77.2% before and after.</p>
       </li>
       <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Step 3</span><span class="tag">5 motor BCI datasets</span></div>
-        <h3>Neutralize BCI data</h3>
-        <p>These datasets were recorded to decode movement, not to diagnose anyone. They still carry the theta/beta ratio, a known correlate of attention disorders. An adaptive attacker estimated it for each subject (Spearman <i>ρ</i> 0.84 to 1.00), and detectors trained on the clinical cohorts were run on them unchanged.</p>
-        <p class="flow-fact">After SANE the attacker fell to chance on <b>5 of 5</b> datasets, the clinical detectors separated subjects 71 to 83% less, and accuracy moved by at most 3.2 points.</p>
-      </li>
-      <li class="flow-card">
-        <div class="flow-top"><span class="flow-n">Step 4</span><span class="tag out">Output</span></div>
-        <h3>Release neutralized EEG</h3>
-        <p>The result is a new release of the recordings in which the subject-level profile that carried the disease markers is equalized and the task signal is kept. Run on the four leaking clinical cohorts, SANE also stopped a detector trained on undefended EEG. SANE Studio does this for your own files.</p>
-        <p class="flow-fact">That detector’s area under the receiver operating characteristic curve (AUC) on MDD1 fell from <b>0.984 to 0.444</b>, and none of the four cohorts stayed significant.</p>
+        <div class="flow-top"><span class="flow-n">Contribution 3</span><span class="tag out">Free and open source</span></div>
+        <h3>SANE Studio</h3>
+        <p>A web tool that runs SANE on your own EEG files inside the browser. It reads EDF, BDF, BrainVision, EEGLAB and FIF recordings and returns each one in the format it came in.</p>
+        <p class="flow-fact"><b>Nothing is uploaded.</b> All 21 recordings of an OpenNeuro reference set were processed and checked. <a href="studio.html">Open SANE Studio</a></p>
       </li>
     </ol>
   </section>
@@ -584,7 +578,7 @@ footer a { color: var(--text-2); }
   <section id="limits">
     <div class="sec-head">
       <h2>Limits</h2>
-      <p>What each step does and does not show, as reported in the paper.</p>
+      <p>What the results do not show, as reported in the paper.</p>
     </div>
     <ul class="limits">
       <li><b>The leak was measured for three disorders.</b> The six cohorts cover Parkinson’s disease, depression and ADHD only. A detector trained on one cohort did not work on the other cohort of the same disorder (AUC 0.386 to 0.621), and MDD2 showed no leak at all, so other disorders and recording setups may behave differently.</li>
