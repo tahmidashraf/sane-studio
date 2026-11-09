@@ -239,6 +239,23 @@ tr.sane-row td { background: var(--brand-soft); font-weight: 600; }
 .table-block + .table-block { margin-top: 30px; }
 .arrow { color: var(--text-3); padding-inline: 3px; }
 
+/* ------------------------------------------------------------ approach (four steps) */
+.flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 540px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+.flow-card { display: flex; flex-direction: column; gap: 8px; padding: 20px 22px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--surface); }
+.flow-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.flow-n { font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.tag { font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong);
+  color: var(--text-2); background: var(--bg); white-space: nowrap; }
+.tag.clin { color: var(--in); border-color: color-mix(in srgb, var(--in) 40%, transparent); background: var(--in-soft); }
+.tag.out { color: var(--brand); border-color: var(--brand-line); background: var(--brand-soft); }
+.flow-card h3 { font-size: 17px; font-weight: 600; }
+.flow-card p { margin: 0; font-size: 14.5px; color: var(--text-2); line-height: 1.6; }
+.flow-card .flow-fact { margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--line-strong); color: var(--text); font-size: 14px; }
+.flow-fact b { font-weight: 700; color: var(--brand); }
+.flow-fact b.before { color: var(--in); }
+
 /* ------------------------------------------------------------ limits */
 .limits { display: grid; gap: 12px; max-width: 760px; margin: 0 auto; padding: 0; list-style: none; }
 .limits li { padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text-2); }
@@ -266,6 +283,7 @@ footer a { color: var(--text-2); }
     </a>
     <nav class="nav" aria-label="Sections">
       <a href="#abstract">Abstract</a>
+      <a href="#approach">Approach</a>
       <a href="#studio">SANE Studio</a>
       <a href="#method">Method</a>
       <a href="#results">Results</a>
@@ -325,6 +343,40 @@ footer a { color: var(--text-2); }
       <p>Electroencephalography (EEG) records brain activity from the scalp, and brain–computer interfaces (BCIs) turn it into commands. Laboratories share these recordings after removing names. However, the signal still carries health markers nobody agreed to share. No known study has both measured and removed this leak. This study does both. First, it sorts recording data into task, identity and health classes and measures the leak with two attackers. Second, it proposes SANE (Spectral Attribute Neutralization for EEG), which edits each recording, so everyone has the same band strengths and channel pattern. This removes personal markers but keeps the brain activity decoders read. Third, it defines a Trait Leakage Index that scores the leak, and the SANE Studio web tool that runs SANE. Before any defense, a probing attacker recovered disorder labels in four of six Parkinson’s, depression and ADHD cohorts. An adaptive attacker estimated each subject’s theta/beta ratio on five BCI datasets (Spearman <i>ρ</i> 0.84 to 1.00). After SANE, this attacker did no better than guessing, and the index fell by 98 to 99%. Yet classification accuracy changed by at most 3.2 points. No other tested defense hid this biomarker everywhere. In a common test, SANE cost at most 1.7 accuracy points, whereas added noise cost up to 12 and left <i>ρ</i> at 0.85 to 0.99. DANN and VIB left <i>ρ</i> at 0.80 to 0.99, and differential privacy hid the biomarker only at chance accuracy. Although clinical data needs further work, SANE protects BCI data at little cost.</p>
       <p class="keywords"><b>Keywords</b>&ensp;Brain–computer interfaces, electroencephalography, attribute inference, privacy-preserving signal processing, biomarker neutralization</p>
     </div>
+  </section>
+
+  <!-- ================================================================ approach -->
+  <section id="approach">
+    <div class="sec-head">
+      <h2>From leak to neutralized EEG</h2>
+      <p>The work runs in four steps. It first measures how much disease information public clinical EEG gives away, then builds SANE to remove it, and then applies SANE to ordinary BCI recordings that carry the same kind of marker.</p>
+    </div>
+    <ol class="flow">
+      <li class="flow-card">
+        <div class="flow-top"><span class="flow-n">Step 1</span><span class="tag clin">6 clinical cohorts</span></div>
+        <h3>Find the leak</h3>
+        <p>Six public cohorts of patients and healthy controls, two each for Parkinson’s disease, major depressive disorder (MDD) and attention-deficit/hyperactivity disorder (ADHD). Reinforcement-learning attackers reveal a few channels, read their band powers, and guess the diagnosis.</p>
+        <p class="flow-fact"><b class="before">4 of 6</b> cohorts gave their labels away, for example 0.942 accuracy against 0.776 for random probing on ADHD1.</p>
+      </li>
+      <li class="flow-card">
+        <div class="flow-top"><span class="flow-n">Step 2</span><span class="tag">Method</span></div>
+        <h3>Build SANE</h3>
+        <p>The attackers needed only band power. The leak sits in each subject’s spectral and spatial profile, which stays nearly the same across all of that subject’s trials, while the task lives in how trials differ. SANE equalizes this subject-level profile with spectral standardization and spatial whitening.</p>
+        <p class="flow-fact"><b>No labels</b> are used to fit SANE, so no diagnosis or attribute has to be chosen in advance.</p>
+      </li>
+      <li class="flow-card">
+        <div class="flow-top"><span class="flow-n">Step 3</span><span class="tag">5 motor BCI datasets</span></div>
+        <h3>Neutralize BCI data</h3>
+        <p>These datasets were recorded to decode movement, not to diagnose anyone. They still carry the theta/beta ratio, a known correlate of attention disorders. An adaptive attacker estimated it for each subject (Spearman <i>ρ</i> 0.84 to 1.00), and detectors trained on the clinical cohorts were run on them unchanged.</p>
+        <p class="flow-fact">After SANE the attacker fell to chance on <b>5 of 5</b> datasets, the clinical detectors separated subjects 71 to 83% less, and accuracy moved by at most 3.2 points.</p>
+      </li>
+      <li class="flow-card">
+        <div class="flow-top"><span class="flow-n">Step 4</span><span class="tag out">Output</span></div>
+        <h3>Release neutralized EEG</h3>
+        <p>The result is a new release of the recordings in which the subject-level profile that carried the disease markers is equalized and the task signal is kept. Run on the four leaking clinical cohorts, SANE also stopped a detector trained on undefended EEG. SANE Studio does this for your own files.</p>
+        <p class="flow-fact">That detector’s area under the receiver operating characteristic curve (AUC) on MDD1 fell from <b>0.984 to 0.444</b>, and none of the four cohorts stayed significant.</p>
+      </li>
+    </ol>
   </section>
 
   <!-- ================================================================ studio -->
@@ -410,14 +462,14 @@ footer a { color: var(--text-2); }
   <section id="key-results">
     <div class="sec-head">
       <h2>Key results</h2>
-      <p>Five motor brain–computer interface (BCI) datasets with 3 to 64 channels, and six clinical cohorts with Parkinson’s disease, depression or ADHD.</p>
+      <p>Six clinical cohorts with Parkinson’s disease, depression or ADHD, and five motor BCI datasets with 3 to 64 channels.</p>
     </div>
     <div class="stats">
-      <div class="stat"><b class="before">0.84–1.00</b><span>Spearman <i>ρ</i> of the attacker that estimates each subject’s theta/beta ratio, before any defense</span></div>
+      <div class="stat"><b class="before">4 of 6</b><span>Clinical cohorts whose disorder labels a probing attacker recovered before any defense</span></div>
+      <div class="stat"><b class="before">0.84–1.00</b><span>Spearman <i>ρ</i> of the attacker that estimates each BCI subject’s theta/beta ratio, before any defense</span></div>
       <div class="stat"><b>5 of 5</b><span>BCI datasets where that attacker fell to the level of guessing after SANE</span></div>
       <div class="stat"><b>98–99%</b><span>Drop in the Trait Leakage Index after SANE</span></div>
       <div class="stat"><b>≤ 3.2</b><span>Points of decoding accuracy lost to SANE, with no loss on BCI IV-2a</span></div>
-      <div class="stat"><b class="before">4 of 6</b><span>Clinical cohorts whose disorder labels a probing attacker recovered before any defense</span></div>
       <div class="stat"><b>1.7–47.8 s</b><span>Time to neutralize a whole dataset on a laptop processor</span></div>
     </div>
   </section>
@@ -484,10 +536,10 @@ footer a { color: var(--text-2); }
     <div class="viewer">
       <div class="tabs" role="tablist" aria-label="Result figures" id="figTabs"></div>
       <figure class="figure-card" id="figPanel" role="tabpanel">
-        <a id="figLink" href="static/img/fig_adaptive_scatter.webp"><img id="figImg" src="static/img/fig_adaptive_scatter.webp" width="2200" height="1136"
-           alt="Adaptive attacker on the five motor BCI datasets, before and after SANE"></a>
+        <a id="figLink" href="static/img/fig_probe_radar.webp"><img id="figImg" src="static/img/fig_probe_radar.webp" width="2200" height="971"
+           alt="Budgeted probing attack on six clinical cohorts and four merged pools"></a>
       </figure>
-      <p class="fig-cap" id="figCap"><b>Adaptive attacker.</b> Each held-out subject’s true theta/beta ratio against the attacker’s estimate, before SANE (a–e) and after (f–j). Before SANE the attacker ranked subjects almost perfectly. After SANE every <i>ρ</i> lies inside the null band of an attacker with no biomarker information (k–o).</p>
+      <p class="fig-cap" id="figCap"><b>Budgeted probing attack on clinical cohorts.</b> A reinforcement-learning policy reads a few channels and predicts the diagnosis. A learned policy beat the random prober in four of six cohorts, for example 0.942 against 0.776 on ADHD1.</p>
     </div>
 
     <div class="table-block" style="margin-top:40px">
@@ -532,13 +584,15 @@ footer a { color: var(--text-2); }
   <section id="limits">
     <div class="sec-head">
       <h2>Limits</h2>
-      <p>What the results do not show, as reported in the paper.</p>
+      <p>What each step does and does not show, as reported in the paper.</p>
     </div>
     <ul class="limits">
-      <li><b>Clinical data needs more work.</b> SANE defeated a clinical detector trained on undefended data. A detector retrained on SANE output from the same cohort still recovered part of the label, with an AUC of 0.862 on MDD1 and 0.744 on ADHD2. The residual lies in the spectral shape inside each band and in the variability across windows.</li>
-      <li><b>The Trait Leakage Index is not a certificate.</b> It covers only second-order structure, so a release with an index near zero can still carry subject information elsewhere, such as cross-frequency coupling.</li>
-      <li><b>No formal guarantee by itself.</b> DP-SANE adds the Gaussian mechanism on top of SANE, but at the noise levels tested the accuracy fell close to chance.</li>
-      <li><b>Batch releases.</b> SANE needs the statistics of each subject, so it suits a dataset released as a whole. SANE Studio neutralizes biomarkers, but it does not anonymize a recording completely.</li>
+      <li><b>The leak was measured for three disorders.</b> The six cohorts cover Parkinson’s disease, depression and ADHD only. A detector trained on one cohort did not work on the other cohort of the same disorder (AUC 0.386 to 0.621), and MDD2 showed no leak at all, so other disorders and recording setups may behave differently.</li>
+      <li><b>SANE removes the profile it targets, not every trace.</b> It equalizes each subject’s band power and channel covariance. The spectral shape inside each band, the variability across windows and other structure, such as cross-frequency coupling, are not equalized. The Trait Leakage Index measures the same second-order structure, so an index near zero is not a certificate.</li>
+      <li><b>The BCI tests use one marker and small datasets.</b> On the five BCI datasets the sensitive marker was the theta/beta ratio. The datasets hold 9 to 40 subjects, which limits the power to detect a weak residual.</li>
+      <li><b>“Neutralized” holds against attackers trained on undefended EEG.</b> On the clinical cohorts, a detector retrained on SANE output from the same cohort still recovered part of the diagnosis, with an AUC of 0.862 on MDD1 and 0.744 on ADHD2. A released cohort is therefore not free of every health trace.</li>
+      <li><b>The task signal survives, but the waveform changes.</b> CSP+LDA lost at most 3.2 points because it reads how trials differ. Decoders that rely on absolute spectral shape would lose more, and a released trial is a re-mixed signal that is not suited to clinical reading.</li>
+      <li><b>No formal guarantee, and batch releases only.</b> DP-SANE adds the Gaussian mechanism to SANE, but at the noise levels tested the accuracy fell close to chance. SANE needs the statistics of every subject, so it suits a dataset released as a whole, and SANE Studio does not anonymize a recording completely.</li>
     </ul>
   </section>
 
@@ -573,12 +627,12 @@ footer a { color: var(--text-2); }
 (function () {
   /* ---------------------------------------------------- figure tabs */
   var figs = [
-    { id: "adaptive", tab: "Adaptive attacker", src: "fig_adaptive_scatter", w: 2200, h: 1136,
-      alt: "Adaptive attacker on the five motor BCI datasets, before and after SANE",
-      cap: "<b>Adaptive attacker.</b> Each held-out subject’s true theta/beta ratio against the attacker’s estimate, before SANE (a–e) and after (f–j). Before SANE the attacker ranked subjects almost perfectly. After SANE every <i>ρ</i> lies inside the null band of an attacker with no biomarker information (k–o)." },
     { id: "probe", tab: "Clinical probing", src: "fig_probe_radar", w: 2200, h: 971,
       alt: "Budgeted probing attack on six clinical cohorts and four merged pools",
       cap: "<b>Budgeted probing attack on clinical cohorts.</b> A reinforcement-learning policy reads a few channels and predicts the diagnosis. A learned policy beat the random prober in four of six cohorts, for example 0.942 against 0.776 on ADHD1." },
+    { id: "adaptive", tab: "Adaptive attacker", src: "fig_adaptive_scatter", w: 2200, h: 1136,
+      alt: "Adaptive attacker on the five motor BCI datasets, before and after SANE",
+      cap: "<b>Adaptive attacker.</b> Each held-out subject’s true theta/beta ratio against the attacker’s estimate, before SANE (a–e) and after (f–j). Before SANE the attacker ranked subjects almost perfectly. After SANE every <i>ρ</i> lies inside the null band of an attacker with no biomarker information (k–o)." },
     { id: "pu", tab: "Defenses compared", src: "fig_privacy_utility", w: 2200, h: 875,
       alt: "Privacy-utility map of SANE and the baseline defenses",
       cap: "<b>Privacy–utility map.</b> Each defense is placed by its attacker <i>ρ</i> and its accuracy, with the null band in green. SANE (star) is the only defense inside the null band on all five datasets. Panels (f)–(j) add the Gaussian mechanism to SANE (DP-SANE)." },
