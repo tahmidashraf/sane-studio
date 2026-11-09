@@ -9,11 +9,15 @@ SciPy) runs in a Web Worker with [Pyodide](https://pyodide.org), so recordings n
 computer and the site needs no server. It is hosted as a static website on GitHub Pages; see
 [DEPLOY.md](DEPLOY.md) for every step.
 
+The site opens on the project page (`index.html`), which presents the SANE paper, its results
+and figures. Its **Open SANE Studio** button leads to the app itself (`studio.html`).
+
 ## Layout
 
 | Path | What it is |
 |---|---|
-| `index.html`, `css/`, `js/app.js`, `js/viewer.js`, `js/charts.js` | the user interface (same as the server version) |
+| `index.html`, `static/img/` | the project page: abstract, method, results, figures from the paper, citation |
+| `studio.html`, `css/`, `js/app.js`, `js/viewer.js`, `js/charts.js` | the SANE Studio user interface (same as the server version) |
 | `js/api.js` | talks to the engine worker instead of a web server |
 | `js/worker.js` | loads Pyodide and the Python packages, runs each request |
 | `py/app/` | the SANE engine, file formats, analysis and job pipeline, unchanged from the server version |
@@ -29,8 +33,9 @@ From this folder:
 python -m http.server 8000
 ```
 
-Then open <http://localhost:8000>. (Opening `index.html` directly from the disk does not work:
-browsers only start the engine worker from a web address.)
+Then open <http://localhost:8000> for the project page, or <http://localhost:8000/studio.html>
+for the app. (Opening `studio.html` directly from the disk does not work: browsers only start the
+engine worker from a web address.)
 
 ## Server version
 

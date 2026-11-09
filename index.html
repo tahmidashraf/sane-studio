@@ -3,292 +3,669 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SANE Studio</title>
-<meta name="description" content="Upload EEG in EDF, BDF, BrainVision, EEGLAB or FIF. SANE neutralizes subject-level neurological biomarkers and returns the data in the same format.">
+<title>SANE: Spectral Attribute Neutralization for EEG</title>
+<meta name="description" content="SANE removes subject-level health markers from shared EEG recordings and keeps the brain activity that BCI decoders read. Paper, results, code, and the SANE Studio web tool.">
+<meta name="author" content="Md. Tahmid Ashraf Chowdhury">
+<meta property="og:title" content="SANE: Spectral Attribute Neutralization for EEG">
+<meta property="og:description" content="Paper, code and the SANE Studio web tool for removing health markers from shared EEG.">
+<meta property="og:type" content="website">
+<!-- PAPER LINK: paste the paper's web address between the quotes below (for example its arXiv or
+     IEEE Xplore page). While it is empty, the Paper buttons show "Link coming soon". -->
+<script>var SANE_PAPER_URL = "";</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b8f80'/%3E%3Cpath d='M5 17h4l2.5-7 4 13 3-9 2 3H27' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script>
-  try { const t = localStorage.getItem("sane-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  /* Same key as SANE Studio, so a theme picked on one page carries to the other. */
+  try { var t = localStorage.getItem("sane-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
 </script>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f6f8fa; --surface-2: #eef2f6;
+  --line: #dfe4eb; --line-strong: #c8d0db;
+  --text: #0e1621; --text-2: #4a5768; --text-3: #6b7889;
+  --brand: #08776b; --brand-mark: #0b8f80; --on-brand: #ffffff;
+  --brand-soft: rgba(11, 143, 128, .09); --brand-line: rgba(11, 143, 128, .32);
+  --in: #b45f08; --in-soft: rgba(194, 104, 10, .11);
+  --ink: #0e1621; --on-ink: #ffffff;
+  --paper: #ffffff; --code: #f3f5f8;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 8px 24px rgba(16, 24, 40, .06);
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1016; --surface: #111821; --surface-2: #172130;
+    --line: #1f2a37; --line-strong: #2c3848;
+    --text: #e7edf5; --text-2: #a4b0c0; --text-3: #7f8c9e;
+    --brand: #33d1be; --brand-mark: #0b8f80; --on-brand: #04211d;
+    --brand-soft: rgba(51, 209, 190, .10); --brand-line: rgba(51, 209, 190, .34);
+    --in: #f2a541; --in-soft: rgba(242, 165, 65, .13);
+    --ink: #e7edf5; --on-ink: #0b1016;
+    --paper: #ffffff; --code: #0f151d;
+    --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 10px 28px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1016; --surface: #111821; --surface-2: #172130;
+  --line: #1f2a37; --line-strong: #2c3848;
+  --text: #e7edf5; --text-2: #a4b0c0; --text-3: #7f8c9e;
+  --brand: #33d1be; --brand-mark: #0b8f80; --on-brand: #04211d;
+  --brand-soft: rgba(51, 209, 190, .10); --brand-line: rgba(51, 209, 190, .34);
+  --in: #f2a541; --in-soft: rgba(242, 165, 65, .13);
+  --ink: #e7edf5; --on-ink: #0b1016;
+  --paper: #ffffff; --code: #0f151d;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 10px 28px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased; }
+a { color: var(--brand); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 4px; }
+img { max-width: 100%; height: auto; display: block; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------ top bar */
+.topbar { position: sticky; top: 0; z-index: 10; border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); }
+.topbar-in { max-width: 1040px; margin: 0 auto; padding-inline: 20px; height: 56px;
+  display: flex; align-items: center; gap: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; letter-spacing: -.01em; }
+.brand svg { width: 26px; height: 26px; flex: none; }
+.nav { display: flex; gap: 18px; margin-left: 8px; }
+.nav a { color: var(--text-2); text-decoration: none; font-size: 14px; font-weight: 500; }
+.nav a:hover { color: var(--text); }
+.topbar .spacer { flex: 1; }
+.icon-btn { width: 36px; height: 36px; display: inline-grid; place-items: center; border-radius: 8px;
+  border: 1px solid var(--line); background: transparent; color: var(--text-2); cursor: pointer; }
+.icon-btn:hover { color: var(--text); background: var(--surface); }
+.icon-btn svg { width: 18px; height: 18px; }
+@media (max-width: 760px) { .nav { display: none; } }
+
+/* ------------------------------------------------------------ buttons */
+.btn { display: inline-flex; align-items: center; gap: 9px; height: 44px; padding: 0 18px;
+  border-radius: 9px; font: 600 15px/1 var(--sans); text-decoration: none; white-space: nowrap;
+  border: 1px solid var(--line-strong); background: var(--bg); color: var(--text);
+  transition: background .15s, border-color .15s, transform .06s; }
+.btn:hover { background: var(--surface); text-decoration: none; }
+.btn:active { transform: translateY(1px); }
+.btn svg { width: 17px; height: 17px; flex: none; }
+.btn-brand { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.btn-brand:hover { background: color-mix(in srgb, var(--brand) 88%, var(--text)); }
+.btn-ink { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.btn-ink:hover { background: color-mix(in srgb, var(--ink) 86%, var(--bg)); }
+.btn-sm { height: 36px; padding: 0 13px; font-size: 14px; border-radius: 8px; }
+@media (max-width: 480px) { .topbar .btn-sm span { display: none; } }
+
+.paper-link.soon { opacity: .55; cursor: default; }
+.paper-link.soon:hover { background: inherit; }
+.btn-ink.paper-link.soon:hover { background: var(--ink); }
+.res.paper-link.soon:hover { border-color: var(--line); background: var(--bg); }
+.res.paper-link.soon .go { color: var(--text-3); }
+
+/* ------------------------------------------------------------ layout */
+.wrap { max-width: 960px; margin: 0 auto; padding-inline: 20px; }
+section { padding-block: 56px; border-top: 1px solid var(--line); }
+section:first-of-type { border-top: 0; }
+.sec-head { text-align: center; margin-bottom: 30px; }
+.sec-head h2 { font-size: clamp(25px, 3.4vw, 31px); font-weight: 700; letter-spacing: -.015em; }
+.sec-head p { margin: 10px auto 0; max-width: 62ch; color: var(--text-2); }
+.prose { max-width: 70ch; margin-inline: auto; }
+.prose p { margin: 0 0 14px; }
+
+/* ------------------------------------------------------------ hero */
+.hero { text-align: center; padding-block: 64px 52px; }
+.hero .mark { width: 56px; height: 56px; margin: 0 auto 18px; }
+.hero h1 { font-size: clamp(46px, 8vw, 68px); line-height: 1; letter-spacing: -.035em; font-weight: 700; }
+.hero .subtitle { margin: 14px auto 0; font-size: clamp(18px, 2.6vw, 23px); color: var(--text-2); max-width: 42ch; line-height: 1.4; }
+.pill { display: inline-flex; align-items: center; gap: 9px; margin-top: 22px; padding: 7px 16px;
+  border-radius: 999px; border: 1px solid var(--brand-line); background: var(--brand-soft);
+  color: var(--text); font-size: 14px; font-weight: 500; }
+.pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-mark); flex: none; }
+.authors { margin: 22px 0 0; font-size: 18px; font-weight: 600; }
+.authors a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+.authors a:hover { border-bottom-color: var(--text); }
+.release { max-width: 640px; margin: 24px auto 0; padding: 14px 20px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--text-2); font-size: 15px; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
+
+/* ------------------------------------------------------------ abstract */
+.abstract p { text-align: justify; hyphens: auto; margin: 0; }
+.keywords { margin-top: 20px !important; text-align: left !important; color: var(--text-2); font-size: 15px; }
+.keywords b { color: var(--text); font-weight: 600; }
+
+/* ------------------------------------------------------------ studio */
+.studio-panel { border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+  padding: 22px; box-shadow: var(--shadow); }
+.shots { display: grid; grid-template-columns: 1.47fr 1fr; gap: 16px; align-items: start; }
+.shots figure { margin: 0; }
+.shots img { border-radius: 8px; border: 1px solid var(--line); background: var(--paper); }
+.shots figcaption { margin-top: 8px; font-size: 13.5px; color: var(--text-2); }
+@media (max-width: 700px) { .shots { grid-template-columns: 1fr; } }
+.features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; margin: 26px 0 0; }
+.features div { padding-left: 14px; border-left: 2px solid var(--brand-line); }
+.features h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.features p { margin: 0; color: var(--text-2); font-size: 15px; }
+@media (max-width: 640px) { .features { grid-template-columns: 1fr; } }
+.studio-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 26px; }
+.studio-note { margin: 16px 0 0; font-size: 14px; color: var(--text-3); }
+
+/* ------------------------------------------------------------ resources */
+.res-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 860px) { .res-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .res-grid { grid-template-columns: 1fr; } }
+.res { display: flex; flex-direction: column; gap: 6px; padding: 18px; border: 1px solid var(--line);
+  border-radius: 12px; color: var(--text); text-decoration: none; background: var(--bg);
+  transition: border-color .15s, background .15s; }
+.res:hover { border-color: var(--brand-line); background: var(--surface); text-decoration: none; }
+.res svg { width: 22px; height: 22px; color: var(--brand); }
+.res h3 { font-size: 16px; font-weight: 600; margin-top: 6px; }
+.res p { margin: 0; color: var(--text-2); font-size: 14px; line-height: 1.55; flex: 1; }
+.res .go { margin-top: 8px; font-size: 14px; font-weight: 600; color: var(--brand); }
+
+/* ------------------------------------------------------------ key results */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 340px) { .stats { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .abstract p { text-align: left; } .stat { padding: 18px 12px; } }
+.stat { background: var(--bg); padding: 22px 20px; text-align: center; }
+.stat b { display: block; font: 700 clamp(28px, 4vw, 36px)/1.15 var(--sans); letter-spacing: -.02em; color: var(--brand); font-variant-numeric: tabular-nums; }
+.stat b.before { color: var(--in); }
+.stat span { display: block; margin-top: 8px; font-size: 14px; color: var(--text-2); line-height: 1.45; }
+
+/* ------------------------------------------------------------ method */
+.figure-card { margin: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); padding: 14px; }
+.figure-card a { display: block; }
+.fig-cap { margin: 10px 2px 0; font-size: 14px; color: var(--text-2); }
+.fig-cap b { color: var(--text); font-weight: 600; }
+.ops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px; }
+@media (max-width: 680px) { .ops { grid-template-columns: minmax(0, 1fr); } }
+.op { min-width: 0; border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: var(--surface); }
+.op .step { font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-3); }
+.op h3 { font-size: 18px; margin: 4px 0 8px; }
+.op p { margin: 0; color: var(--text-2); font-size: 15px; }
+.eq { margin: 14px 0 0; padding: 12px 14px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line);
+  font: 17px/1.5 "Cambria Math", "STIX Two Math", "Times New Roman", serif; text-align: center; overflow-x: auto; white-space: nowrap; }
+.eq i { font-style: italic; }
+@media (max-width: 480px) { .eq { font-size: 15px; padding-inline: 8px; } .op { padding: 16px; } }
+.compose { margin: 18px 0 0; text-align: center; color: var(--text-2); font-size: 15px; }
+.compose .eq { display: inline-block; max-width: 100%; margin: 0 0 8px; vertical-align: top; }
+.bands { margin-top: 30px; }
+.bands-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.band { border-radius: 8px; padding: 10px 6px; text-align: center; background: var(--surface); border: 1px solid var(--line); }
+.band b { display: block; font: 600 20px/1.2 var(--sans); }
+.band span { display: block; font: 12.5px/1.3 var(--mono); color: var(--text-2); }
+.band.hot { background: var(--in-soft); border-color: color-mix(in srgb, var(--in) 45%, transparent); }
+.band.hot b { color: var(--in); }
+.bands p { margin: 10px 0 0; font-size: 14px; color: var(--text-2); text-align: center; }
+.pipeline { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 26px; }
+.pipeline span { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+.pipeline span.sane { border-color: var(--brand-line); background: var(--brand-soft); font-weight: 600; }
+.pipeline em { color: var(--text-3); font-style: normal; }
+
+/* ------------------------------------------------------------ figure viewer */
+.tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 16px; }
+@media (max-width: 640px) { .tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; } }
+.tabs button { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text-2); font: 500 14px var(--sans); cursor: pointer; }
+.tabs button:hover { color: var(--text); border-color: var(--line-strong); }
+.tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.viewer .fig-cap { min-height: 3.2em; }
+.open-full { font-size: 13px; color: var(--text-3); margin-top: 6px; }
+
+/* ------------------------------------------------------------ tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; min-width: 680px; }
+caption { caption-side: top; text-align: left; padding: 14px 16px 10px; font-weight: 600; font-size: 15.5px; }
+th, td { padding: 10px 14px; text-align: center; border-top: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 190px; }
+thead th { background: var(--surface); font-weight: 600; font-size: 13.5px; color: var(--text-2); }
+td.num, td .num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 13.5px; }
+tr.sane-row td { background: var(--brand-soft); font-weight: 600; }
+.leak { color: var(--in); font-weight: 600; }
+.hid { color: var(--brand); font-weight: 600; }
+.t-note { margin: 10px 4px 0; font-size: 13.5px; color: var(--text-3); }
+.table-block + .table-block { margin-top: 30px; }
+.arrow { color: var(--text-3); padding-inline: 3px; }
+
+/* ------------------------------------------------------------ limits */
+.limits { display: grid; gap: 12px; max-width: 760px; margin: 0 auto; padding: 0; list-style: none; }
+.limits li { padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text-2); }
+.limits li b { color: var(--text); font-weight: 600; }
+
+/* ------------------------------------------------------------ citation */
+.bib { position: relative; max-width: 760px; margin: 0 auto; }
+.bib pre { margin: 0; padding: 18px 20px; border-radius: 12px; background: var(--code); border: 1px solid var(--line);
+  font: 13.5px/1.6 var(--mono); overflow-x: auto; color: var(--text); }
+.bib .copy { position: absolute; top: 10px; right: 10px; }
+
+/* ------------------------------------------------------------ footer */
+footer { border-top: 1px solid var(--line); padding-block: 28px 40px; color: var(--text-3); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 22px; justify-content: space-between; }
+footer a { color: var(--text-2); }
+</style>
 </head>
 <body>
+
 <header class="topbar">
-  <a class="brand" href="./" aria-label="SANE Studio home">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="var(--out)"/><path d="M5 17h4l2.5-7 4 13 3-9 2 3H27" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    <b>SANE Studio</b><span>EEG biomarker neutralization</span>
-  </a>
-  <div class="spacer"></div>
-  <div class="session-chip" id="sessionChip" hidden><i></i><span id="sessionText"></span></div>
-  <button class="btn ghost sm" id="newSession" hidden>New session</button>
-  <a class="btn ghost sm" href="manual.html" target="_blank" rel="noopener" title="Open the user manual in a new tab">Manual</a>
-  <button class="btn ghost icon" id="themeBtn" aria-label="Toggle colour theme" title="Toggle colour theme">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
-  </button>
+  <div class="topbar-in">
+    <a class="brand" href="#top" aria-label="SANE, back to top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b8f80"/><path d="M5 17h4l2.5-7 4 13 3-9 2 3H27" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      SANE
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#abstract">Abstract</a>
+      <a href="#studio">SANE Studio</a>
+      <a href="#method">Method</a>
+      <a href="#results">Results</a>
+      <a href="#cite">Cite</a>
+    </nav>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="Switch between light and dark theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <a class="btn btn-brand btn-sm" href="studio.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 3-8 1.5 2H21"/></svg>
+      <span>Open SANE Studio</span>
+    </a>
+  </div>
 </header>
 
-<main>
-  <!-- ============================================================ UPLOAD -->
-  <section id="screenUpload">
-    <div class="hero">
-      <div>
-        <div class="eyebrow">Neural data, de-identified</div>
-        <h1>Remove the disease fingerprint from EEG. <em>Keep everything the study needs.</em></h1>
-        <p class="lede">SANE neutralizes subject-level spectral and spatial biomarkers, such as an elevated theta/beta ratio, while preserving trial-level brain dynamics, events and auxiliary channels. You get the data back in the same file format.</p>
-        <div class="drop" id="drop">
-          <svg class="drop-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 31V9m0 0-8 8m8-8 8 8"/><path d="M8 29v6a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-6"/></svg>
-          <h2>Drop EEG files or a whole folder</h2>
-          <p>Include companion files: BrainVision needs .vhdr + .vmrk + .eeg, and EEGLAB a .set with its .fdt.</p>
-          <div class="actions">
-            <button class="btn primary" id="pickFiles">Choose files</button>
-            <button class="btn" id="pickFolder">Choose folder</button>
-          </div>
-          <div class="formats" aria-label="Supported formats">
-            <span class="chip fmt">.edf</span><span class="chip fmt">.bdf</span><span class="chip fmt">.vhdr · .vmrk · .eeg</span>
-            <span class="chip fmt">.set · .fdt</span><span class="chip fmt">.fif</span>
-          </div>
-          <input type="file" id="fileInput" multiple hidden accept=".edf,.bdf,.vhdr,.vmrk,.eeg,.set,.fdt,.fif,.gz">
-          <input type="file" id="folderInput" webkitdirectory multiple hidden>
+<main class="wrap" id="top">
+
+  <!-- ================================================================ hero -->
+  <section class="hero">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#0b8f80"/><path d="M5 17h4l2.5-7 4 13 3-9 2 3H27" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h1>SANE</h1>
+    <p class="subtitle">Spectral Attribute Neutralization for EEG</p>
+    <!-- Venue line. After the review decision, replace the text, for example: Accepted at IEEE S&amp;P 2027 -->
+    <p class="pill"><i></i>Paper and open-source tool, 2026</p>
+    <p class="authors"><a href="https://tahmidashraf.github.io/">Md. Tahmid Ashraf Chowdhury</a></p>
+    <p class="release">This page links the paper, the source code under the MIT license, and SANE Studio, a web tool that runs SANE on your own recordings inside the browser.</p>
+    <div class="actions">
+      <a class="btn btn-brand" href="studio.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 3-8 1.5 2H21"/></svg>
+        Open SANE Studio
+      </a>
+      <a class="btn btn-ink paper-link" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+        Paper
+      </a>
+      <a class="btn" href="https://github.com/tahmidashraf/sane-studio">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        Code
+      </a>
+      <a class="btn" href="manual.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+        Manual
+      </a>
+      <a class="btn" href="#cite">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h4v4c0 3-1.5 5-4 6M15 7h4v4c0 3-1.5 5-4 6"/></svg>
+        Cite
+      </a>
+    </div>
+  </section>
+
+  <!-- ================================================================ abstract -->
+  <section id="abstract" class="abstract">
+    <div class="sec-head"><h2>Abstract</h2></div>
+    <div class="prose">
+      <!-- The abstract is the paper's abstract, word for word. -->
+      <p>Electroencephalography (EEG) records brain activity from the scalp, and brain–computer interfaces (BCIs) turn it into commands. Laboratories share these recordings after removing names. However, the signal still carries health markers nobody agreed to share. No known study has both measured and removed this leak. This study does both. First, it sorts recording data into task, identity and health classes and measures the leak with two attackers. Second, it proposes SANE (Spectral Attribute Neutralization for EEG), which edits each recording, so everyone has the same band strengths and channel pattern. This removes personal markers but keeps the brain activity decoders read. Third, it defines a Trait Leakage Index that scores the leak, and the SANE Studio web tool that runs SANE. Before any defense, a probing attacker recovered disorder labels in four of six Parkinson’s, depression and ADHD cohorts. An adaptive attacker estimated each subject’s theta/beta ratio on five BCI datasets (Spearman <i>ρ</i> 0.84 to 1.00). After SANE, this attacker did no better than guessing, and the index fell by 98 to 99%. Yet classification accuracy changed by at most 3.2 points. No other tested defense hid this biomarker everywhere. In a common test, SANE cost at most 1.7 accuracy points, whereas added noise cost up to 12 and left <i>ρ</i> at 0.85 to 0.99. DANN and VIB left <i>ρ</i> at 0.80 to 0.99, and differential privacy hid the biomarker only at chance accuracy. Although clinical data needs further work, SANE protects BCI data at little cost.</p>
+      <p class="keywords"><b>Keywords</b>&ensp;Brain–computer interfaces, electroencephalography, attribute inference, privacy-preserving signal processing, biomarker neutralization</p>
+    </div>
+  </section>
+
+  <!-- ================================================================ studio -->
+  <section id="studio">
+    <div class="sec-head">
+      <h2>Try it with SANE Studio</h2>
+      <p>Choose EEG files, set the strength, and download the neutralized recordings in the format they came in. The same Python engine runs inside the page, so a recording never leaves your computer.</p>
+    </div>
+    <div class="studio-panel">
+      <div class="shots">
+        <figure>
+          <img src="static/img/studio_results_cards.webp" width="1572" height="946" loading="lazy"
+               alt="SANE Studio summary cards comparing a 64-channel resting recording before and after SANE">
+          <figcaption>Summary cards, before (orange) and after SANE (green), on a 64-channel resting recording.</figcaption>
+        </figure>
+        <figure>
+          <img src="static/img/studio_diffgraph.webp" width="1536" height="1068" loading="lazy"
+               alt="SANE Studio difference graph with one line per channel and dots at each visible difference">
+          <figcaption>Difference timestamps, one line per channel, with a dot where input and output visibly differ.</figcaption>
+        </figure>
+      </div>
+      <div class="features">
+        <div>
+          <h3>Your format back</h3>
+          <p>Reads European Data Format (EDF, EDF+), BioSemi Data Format (BDF), BrainVision, EEGLAB and Functional Image File (FIF) recordings. EDF, BDF and BrainVision outputs edit the uploaded file, so headers, events and non-EEG channels stay as they were.</p>
         </div>
-        <div class="engine-status" id="engineStatus" role="status" aria-live="polite"></div>
-        <div style="margin-top:22px">
-          <div class="label">No data at hand? Try a sample dataset</div>
-          <div class="samples" id="samples"></div>
+        <div>
+          <h3>Stays on your computer</h3>
+          <p>The browser version runs SANE with Pyodide, Python compiled to WebAssembly. Files are read and written in the page, and nothing is sent to a server.</p>
+        </div>
+        <div>
+          <h3>A report for every run</h3>
+          <p>Each session shows, before and after neutralization, the theta/beta deviation, the spread of the biomarker between subjects, the Trait Leakage Index, a leave-one-out attacker when five or more subjects are present, and a within-band fidelity score.</p>
+        </div>
+        <div>
+          <h3>One strength control</h3>
+          <p>Strength <i>α</i> runs from 0, which returns the input unchanged, to 1, full neutralization. A single subject is aligned to a normative profile instead of a cohort reference.</p>
         </div>
       </div>
-      <aside class="panel how">
-        <div class="panel-head"><h2>What happens to your data</h2></div>
-        <div class="panel-body">
-          <ol>
-            <li><span class="n">1</span><div><b>Read</b><span>Every recording is parsed with MNE-Python. Scalp EEG is separated from EOG, ECG, EMG and trigger channels, which pass through untouched.</span></div></li>
-            <li><span class="n">2</span><div><b>Neutralize</b><span>Each subject's band power is set to the reference, and the per-band spatial covariance is aligned with a minimal-distortion optimal-transport map.</span></div></li>
-            <li><span class="n">3</span><div><b>Return</b><span>Download the result as EDF, BDF, BrainVision, EEGLAB or FIF, matching the file you opened, with the same sampling rate, channels and events.</span></div></li>
-          </ol>
-          <div class="assure">
-            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.2 8 9 4.6-.8 8-4 8-9V6z"/></svg>Your recordings never leave this computer: SANE runs inside your browser, and closing the tab clears everything.</div>
-            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h10M4 17h7"/></svg>Header identifiers such as name, birth date and measurement date can be stripped from the output.</div>
-            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>A privacy report measures what changed: biomarker deviation, spatial fingerprint and the Trait Leakage Index.</div>
-          </div>
-          <div class="keeps">
-            <div class="rm"><h4>Neutralized</h4><ul><li>Subject theta/beta and band profile</li><li>Spatial covariance fingerprint</li><li>Header identifiers (optional)</li></ul></div>
-            <div class="kp"><h4>Preserved</h4><ul><li>Trial-level dynamics and ERD</li><li>Events, EOG, ECG, triggers</li><li>Format, rate, channel layout</li></ul></div>
-          </div>
-        </div>
-      </aside>
-    </div>
-  </section>
-
-  <!-- ============================================================ CONFIGURE -->
-  <section id="screenConfig" hidden>
-    <div class="screen-title">
-      <div><h1>Review recordings</h1><p>Check what was detected, assign subjects, and set how strongly SANE neutralizes. Recordings of the same person should share a subject ID.</p></div>
-      <div class="spacer"></div>
-      <button class="btn" id="addMore">Add more files</button>
-    </div>
-    <div class="config">
-      <div class="panel">
-        <div class="panel-head"><h2 id="recCount">Recordings</h2><div class="spacer"></div><span class="faint" id="recTotals"></span></div>
-        <div class="table-wrap">
-          <table class="data rec-table">
-            <thead><tr><th>File</th><th>Format</th><th class="num">EEG / all ch</th><th class="num">Rate</th><th class="num">Duration</th><th class="num">Events</th><th>Subject</th><th>Status</th></tr></thead>
-            <tbody id="recRows"></tbody>
-          </table>
-        </div>
-        <div class="panel-body" style="padding-top:0"><div class="notes" id="uploadNotes"></div></div>
+      <div class="studio-cta">
+        <a class="btn btn-brand" href="studio.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 3-8 1.5 2H21"/></svg>
+          Open SANE Studio
+        </a>
+        <a class="btn" href="manual.html">Read the manual</a>
       </div>
-      <aside class="panel params">
-        <div class="panel-head"><h2>Neutralization</h2></div>
-        <div class="panel-body">
-          <div class="field">
-            <div class="alpha-row"><label for="alpha">Strength α</label><span class="alpha-val" id="alphaVal">1.00</span></div>
-            <input type="range" class="slider" id="alpha" min="0" max="1" step="0.05" value="1">
-            <div class="ticks"><span>0 · off</span><span>0.5</span><span>1 · full</span></div>
-            <div class="hint">At 1 the subject-level biomarker is fully set to the reference. Lower values interpolate along the minimal-distortion path.</div>
-          </div>
-          <div class="field">
-            <div class="alpha-row"><label for="spAlpha">Spatial alignment</label><span class="alpha-val" id="spAlphaVal">Auto</span></div>
-            <input type="range" class="slider" id="spAlpha" min="0" max="1" step="0.05" value="0">
-            <div class="ticks"><span>0 · keep channels</span><span>1 · full</span></div>
-            <div class="hint">Moves each subject's channel covariance onto the reference, removing the spatial fingerprint. <b id="spAutoNote"></b> Spectral biomarker removal is not affected. <button type="button" class="btn ghost inline-btn" id="spAuto" hidden>Back to auto</button></div>
-          </div>
-          <div class="field">
-            <label>Reference</label>
-            <div class="seg" id="refSeg" role="group" aria-label="Reference">
-              <button data-v="auto" aria-pressed="true">Auto</button><button data-v="cohort" aria-pressed="false">Cohort</button><button data-v="normative" aria-pressed="false">Normative</button>
-            </div>
-            <div class="hint" id="refHint"></div>
-          </div>
-          <div class="field" id="spatialField">
-            <label>Normative spatial model</label>
-            <div class="seg" id="spatialSeg" role="group" aria-label="Spatial model">
-              <button data-v="kernel" aria-pressed="true">Head geometry</button><button data-v="identity" aria-pressed="false">Decorrelated</button>
-            </div>
-            <div class="hint">Used only when there is no cohort to align to. Head geometry models volume conduction from electrode positions.</div>
-          </div>
-          <label class="switch"><input type="checkbox" id="oob" checked><span><b>Keep content outside 1–45 Hz</b><small>Slow drifts and high-frequency content pass through unchanged.</small></span></label>
-          <label class="switch"><input type="checkbox" id="anon" checked><span><b>Strip personal metadata</b><small>Removes name, birth date, IDs and the recording date from the file header.</small></span></label>
-          <button class="btn accent" id="runBtn" style="height:42px">Neutralize recordings</button>
-        </div>
-      </aside>
+      <p class="studio-note">The first visit downloads about 50 MB, the Python packages that run SANE in the page. All 21 recordings of an OpenNeuro reference set were processed and checked, and in a blind round of 18 random files, 12 were processed and 6 were refused with the reason. SANE Studio neutralizes biomarkers, but it does not anonymize a recording completely.</p>
     </div>
   </section>
 
-  <!-- ============================================================ PROCESSING -->
-  <section id="screenProc" hidden>
-    <div class="proc">
-      <div class="eyebrow">Processing</div>
-      <h1>Neutralizing subject biomarkers</h1>
-      <p>This usually takes a few seconds per recording. You can keep this tab open.</p>
-      <div class="bar"><i id="procBar"></i></div>
-      <div class="stage" id="procStage">Starting</div>
-      <div class="steps" id="procSteps"><span>Analyze</span><span>Reference</span><span>Neutralize</span><span>Write</span><span>Report</span></div>
+  <!-- ================================================================ resources -->
+  <section id="resources">
+    <div class="sec-head"><h2>Resources</h2></div>
+    <div class="res-grid">
+      <a class="res paper-link" href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
+        <h3>Paper</h3>
+        <p>The full paper in 17 pages, with the privacy bound, the attack algorithms and the SANE Studio appendix.</p>
+        <span class="go">Read the paper</span>
+      </a>
+      <a class="res" href="https://github.com/tahmidashraf/sane-studio">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <h3>Code</h3>
+        <p>SANE Studio under the MIT license. The browser version is on <span class="mono">main</span> and the server version on <span class="mono">server</span>.</p>
+        <span class="go">Open the repository</span>
+      </a>
+      <a class="res" href="studio.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.5-6 4 12 3-8 1.5 2H21"/></svg>
+        <h3>Live tool</h3>
+        <p>SANE Studio in the browser, with two sample recordings to try. No installation and no upload.</p>
+        <span class="go">Open SANE Studio</span>
+      </a>
+      <a class="res" href="manual.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>
+        <h3>Manual</h3>
+        <p>Every screen, setting and output file of SANE Studio, with messages and what to do about them.</p>
+        <span class="go">Read the manual</span>
+      </a>
     </div>
   </section>
 
-  <!-- ============================================================ WORKSPACE -->
-  <section id="screenWork" hidden>
-    <div class="ws">
-      <aside class="rail">
-        <div class="panel">
-          <div class="panel-head"><h3>Recordings</h3><div class="spacer"></div><span class="faint mono" id="railCount"></span></div>
-          <div class="list" id="recList"></div>
-        </div>
-        <div class="panel dl">
-          <button class="btn accent" id="dlAll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg>Download all (.zip)</button>
-          <button class="btn" id="reconfigure">Change settings</button>
-        </div>
-      </aside>
+  <!-- ================================================================ key results -->
+  <section id="key-results">
+    <div class="sec-head">
+      <h2>Key results</h2>
+      <p>Five motor brain–computer interface (BCI) datasets with 3 to 64 channels, and six clinical cohorts with Parkinson’s disease, depression or ADHD.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><b class="before">0.84–1.00</b><span>Spearman <i>ρ</i> of the attacker that estimates each subject’s theta/beta ratio, before any defense</span></div>
+      <div class="stat"><b>5 of 5</b><span>BCI datasets where that attacker fell to the level of guessing after SANE</span></div>
+      <div class="stat"><b>98–99%</b><span>Drop in the Trait Leakage Index after SANE</span></div>
+      <div class="stat"><b>≤ 3.2</b><span>Points of decoding accuracy lost to SANE, with no loss on BCI IV-2a</span></div>
+      <div class="stat"><b class="before">4 of 6</b><span>Clinical cohorts whose disorder labels a probing attacker recovered before any defense</span></div>
+      <div class="stat"><b>1.7–47.8 s</b><span>Time to neutralize a whole dataset on a laptop processor</span></div>
+    </div>
+  </section>
 
-      <div>
-        <div class="rec-head">
-          <div><h1 id="recTitle"></h1><div class="facts" id="recFacts"></div><div class="notes" id="recNotes" hidden></div></div>
-          <div class="spacer"></div>
-          <button class="btn" id="dlOne"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0-5-5m5 5 5-5M5 20h14"/></svg><span id="dlOneLabel">Download</span></button>
-        </div>
+  <!-- ================================================================ method -->
+  <section id="method">
+    <div class="sec-head">
+      <h2>How SANE works</h2>
+      <p>A health marker such as the theta/beta ratio stays nearly constant across the trials of one subject, while the task lives in how trials differ. SANE removes the subject-level part and keeps the trial-level part.</p>
+    </div>
 
-        <div class="kpis" id="kpis"></div>
+    <figure class="figure-card">
+      <a href="static/img/fig_method.webp"><img src="static/img/fig_method.webp" width="2200" height="1560" loading="lazy"
+         alt="Workflow of the study in nine stages, from data collection to performance analysis, with the SANE defense as Stage 6"></a>
+    </figure>
+    <p class="fig-cap"><b>Workflow of the study in nine stages.</b> Each stage matches a subsection of the paper’s method, and Stage 6 is the SANE defense.</p>
 
-        <div class="panel viewer">
-          <div class="toolbar">
-            <div class="grp"><span>View</span>
-              <div class="seg" id="viewSeg"><button data-v="split" aria-pressed="true">Split</button><button data-v="overlay" aria-pressed="false">Overlay</button><button data-v="in" aria-pressed="false">Input</button><button data-v="out" aria-pressed="false">Output</button><button data-v="diff" aria-pressed="false">Difference</button></div>
-            </div>
-            <div class="grp"><span>Band</span>
-              <select class="input" id="bandSel" style="height:32px"><option value="broad">Broadband</option><option value="delta">δ 1–4 Hz</option><option value="theta">θ 4–8 Hz</option><option value="alpha">α 8–13 Hz</option><option value="beta">β 13–30 Hz</option><option value="gamma">γ 30–45 Hz</option></select>
-            </div>
-            <div class="grp"><span>Window</span>
-              <select class="input" id="winSel" style="height:32px"><option>2</option><option>5</option><option selected>10</option><option>20</option><option>30</option><option>60</option></select>
-            </div>
-            <div class="grp"><span>Channels</span>
-              <select class="input" id="chSel" style="height:32px"></select>
-            </div>
-            <div class="grp"><span>Scale</span>
-              <button class="btn icon sm" id="scaleDown" aria-label="Decrease amplitude">−</button>
-              <span class="mono" id="scaleVal" style="min-width:66px;text-align:center"></span>
-              <button class="btn icon sm" id="scaleUp" aria-label="Increase amplitude">+</button>
-            </div>
-            <label class="switch" style="align-items:center"><input type="checkbox" id="auxToggle" checked><span><b style="font-size:13px">Aux</b></span></label>
-            <label class="switch" style="align-items:center"><input type="checkbox" id="evToggle" checked><span><b style="font-size:13px">Events</b></span></label>
-          </div>
-          <div class="diffbar" id="diffBar" hidden></div>
-          <div class="plots" id="plots">
-            <div class="plot" id="plotIn"><span class="cap chip in">INPUT</span><canvas id="cvIn"></canvas></div>
-            <div class="plot" id="plotOut"><span class="cap chip out">SANE OUTPUT</span><canvas id="cvOut"></canvas></div>
-            <div class="readout" id="readout" hidden></div>
-          </div>
-          <div class="timeline">
-            <canvas id="cvTimeline"></canvas>
-            <div class="nav">
-              <button class="btn icon sm" id="prevWin" aria-label="Previous window">‹</button>
-              <button class="btn icon sm" id="nextWin" aria-label="Next window">›</button>
-              <span id="winLabel"></span>
-              <div class="spacer"></div>
-              <div class="legend"><span><i style="background:var(--in)"></i>input</span><span><i style="background:var(--out)"></i>SANE output</span><span><i style="background:var(--diff)"></i>visible difference</span><span><i style="background:var(--bio)"></i>events</span></div>
-            </div>
-          </div>
-          <div class="diffmap">
-            <div class="diffmap-head">
-              <h3>Difference timestamps by channel</h3>
-              <div class="seg" id="diffMapSeg" role="group" aria-label="Difference graph type"><button data-v="line" aria-pressed="true">Line graph</button><button data-v="map" aria-pressed="false">Channel map</button></div>
-              <span class="sum" id="diffMapSum"></span>
-            </div>
-            <div class="diffmap-leg">
-              <div class="legend" id="diffLegLine"><span><i style="background:var(--text-3)"></i>each channel</span><span><i style="background:var(--ref)"></i>highlighted channel</span><span><i class="dot"></i>visible difference (peak of each span)</span><span><i class="dash"></i>visible threshold</span><span><i style="background:var(--bio)"></i>events</span></div>
-              <div class="legend" id="diffLegMap" hidden><span><i class="blk" style="background:var(--diff)"></i>visible difference</span><span><i style="background:var(--bio)"></i>events</span><span><i class="blk sel"></i>selected channel</span></div>
-            </div>
-            <div class="chart">
-              <canvas id="cvDiffMap" aria-label="Times in the current window where input and SANE output differ visibly, for every channel"></canvas>
-              <div class="readout" id="diffTip" hidden></div>
-            </div>
-            <div class="subtle-note" id="diffMapNote"></div>
-          </div>
-        </div>
+    <div class="pipeline" aria-label="Processing steps">
+      <span>Raw EEG</span><em>→</em>
+      <span>Resample to 128 Hz</span><em>→</em>
+      <span>Five frequency bands</span><em>→</em>
+      <span class="sane">Spectral standardization</span><em>→</em>
+      <span class="sane">Spatial whitening</span><em>→</em>
+      <span>Released EEG</span>
+    </div>
 
-        <div class="panel" style="margin-top:14px">
-          <div class="tabs" role="tablist" id="tabs">
-            <button role="tab" data-t="spectrum" aria-selected="true">Spectrum</button>
-            <button role="tab" data-t="bands" aria-selected="false">Band power</button>
-            <button role="tab" data-t="topo" aria-selected="false">Topography</button>
-            <button role="tab" data-t="spatial" aria-selected="false">Spatial fingerprint</button>
-            <button role="tab" data-t="report" aria-selected="false">Privacy report</button>
-          </div>
-          <div class="tab-body" id="tab-spectrum">
-            <div class="two-col">
-              <div><div class="chart"><canvas id="cvPsd"></canvas></div>
-                <div class="subtle-note" id="psdNote"></div></div>
-              <div><div class="label" style="margin-bottom:8px">Channel</div>
-                <select class="input" id="psdChan" style="width:100%"></select>
-                <div class="report-grid" style="margin-top:14px;grid-template-columns:1fr" id="psdStats"></div></div>
-            </div>
-          </div>
-          <div class="tab-body" id="tab-bands" hidden>
-            <div class="two-col">
-              <div><div class="chart"><canvas id="cvBands"></canvas></div>
-                <div class="subtle-note" id="bandsNote"></div></div>
-              <div><div class="label" style="margin-bottom:8px">Per-channel θ/β deviation from reference (log)</div><div class="chart"><canvas id="cvTb"></canvas></div>
-                <div class="subtle-note">Each pair of bars is one EEG channel: input in amber, SANE output in teal. Output deviations collapse onto zero, the reference line.</div></div>
-            </div>
-          </div>
-          <div class="tab-body" id="tab-topo" hidden>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-              <span class="label">Map</span>
-              <select class="input" id="topoSel"><option value="tb">theta/beta ratio (log)</option><option value="delta">relative δ power</option><option value="theta">relative θ power</option><option value="alpha">relative α power</option><option value="beta">relative β power</option><option value="gamma">relative γ power</option></select>
-            </div>
-            <div class="three" id="topoMaps">
-              <figure><figcaption><span>Input</span></figcaption><div class="chart"><canvas id="cvTopoIn"></canvas></div></figure>
-              <figure><figcaption><span>SANE output</span></figcaption><div class="chart"><canvas id="cvTopoOut"></canvas></div></figure>
-              <figure><figcaption><span>Reference</span></figcaption><div class="chart"><canvas id="cvTopoRef"></canvas></div></figure>
-            </div>
-            <div class="colorbar" id="topoBar"></div>
-            <div class="subtle-note" id="topoNote"></div>
-          </div>
-          <div class="tab-body" id="tab-spatial" hidden>
-            <div style="display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
-              <span class="label">Band</span><div class="seg" id="spBandSeg"></div>
-            </div>
-            <div class="three">
-              <figure><figcaption><span>Input correlation</span><span class="mono" id="spDistIn"></span></figcaption><div class="chart"><canvas id="cvSpIn"></canvas></div></figure>
-              <figure><figcaption><span>SANE output</span><span class="mono" id="spDistOut"></span></figcaption><div class="chart"><canvas id="cvSpOut"></canvas></div></figure>
-              <figure><figcaption><span>Reference</span></figcaption><div class="chart"><canvas id="cvSpRef"></canvas></div></figure>
-            </div>
-            <div class="colorbar"><span>−1</span><i style="background:linear-gradient(90deg,#3b6fd1,#f4f6fa 50%,#d1443b)"></i><span>+1</span></div>
-            <div class="subtle-note">Channel-by-channel correlation in the selected band. The spatial fingerprint is how far the input differs from the reference; SANE moves the output onto it.</div>
-          </div>
-          <div class="tab-body" id="tab-report" hidden><div id="reportBody"></div></div>
-        </div>
+    <div class="ops">
+      <div class="op">
+        <div class="step">Operator 1</div>
+        <h3>Spectral standardization</h3>
+        <p>Moves each subject’s power in every channel and band to the population level. The gain is constant for a subject, so it adds no trial-level information.</p>
+        <div class="eq"><i>g</i><sub><i>s</i>,<i>c</i></sub><sup>(<i>b</i>)</sup> = (<i>μ</i><sub><i>c</i></sub><sup>(<i>b</i>)</sup> / <i>μ</i><sub><i>s</i>,<i>c</i></sub><sup>(<i>b</i>)</sup>)<sup><i>α</i>/2</sup></div>
+      </div>
+      <div class="op">
+        <div class="step">Operator 2</div>
+        <h3>Spatial whitening</h3>
+        <p>Per-band Euclidean alignment gives every subject the same mean covariance. Each trial’s deviation from that mean, which common spatial patterns read, is kept.</p>
+        <div class="eq"><i>W</i><sub><i>s</i>,<i>α</i></sub><sup>(<i>b</i>)</sup> = (1 − <i>α</i>) <i>I</i> + <i>α</i> <i>W</i><sub><i>s</i></sub><sup>(<i>b</i>)</sup></div>
       </div>
     </div>
+    <div class="compose">
+      <div class="eq">SANE<sub><i>α</i></sub>(<i>X</i>) = whiten<sub><i>α</i></sub>(standardize<sub><i>α</i></sub>(<i>X</i>))</div>
+      <div>Both operators are fitted from subject identity alone, without the task label or the sensitive attribute. One strength <i>α</i> moves SANE from the identity (<i>α</i> = 0) to full neutralization (<i>α</i> = 1, the default).</div>
+    </div>
+
+    <div class="bands">
+      <div class="bands-row">
+        <div class="band"><b>δ</b><span>1–4 Hz</span></div>
+        <div class="band hot"><b>θ</b><span>4–8 Hz</span></div>
+        <div class="band"><b>α</b><span>8–13 Hz</span></div>
+        <div class="band hot"><b>β</b><span>13–30 Hz</span></div>
+        <div class="band"><b>γ</b><span>30–45 Hz</span></div>
+      </div>
+      <p>SANE equalizes all five bands. The attacker’s target, the theta/beta ratio, comes from the two marked bands.</p>
+    </div>
   </section>
+
+  <!-- ================================================================ results -->
+  <section id="results">
+    <div class="sec-head">
+      <h2>Results</h2>
+      <p>Figures from the paper. Choose a tab, and click a figure to open it at full size.</p>
+    </div>
+    <div class="viewer">
+      <div class="tabs" role="tablist" aria-label="Result figures" id="figTabs"></div>
+      <figure class="figure-card" id="figPanel" role="tabpanel">
+        <a id="figLink" href="static/img/fig_adaptive_scatter.webp"><img id="figImg" src="static/img/fig_adaptive_scatter.webp" width="2200" height="1136"
+           alt="Adaptive attacker on the five motor BCI datasets, before and after SANE"></a>
+      </figure>
+      <p class="fig-cap" id="figCap"><b>Adaptive attacker.</b> Each held-out subject’s true theta/beta ratio against the attacker’s estimate, before SANE (a–e) and after (f–j). Before SANE the attacker ranked subjects almost perfectly. After SANE every <i>ρ</i> lies inside the null band of an attacker with no biomarker information (k–o).</p>
+    </div>
+
+    <div class="table-block" style="margin-top:40px">
+      <div class="table-wrap">
+        <table>
+          <caption>Privacy and utility of SANE at <i>α</i> = 1</caption>
+          <thead><tr><th scope="col">Measure</th><th scope="col">BCI IV-2a</th><th scope="col">BCI IV-2b</th><th scope="col">Steyrl</th><th scope="col">Faller</th><th scope="col">PhysioNet</th></tr></thead>
+          <tbody>
+            <tr><td>CSP+LDA accuracy, undefended <span class="arrow">→</span> SANE</td><td class="num">0.772 → 0.772</td><td class="num">0.704 → 0.676</td><td class="num">0.785 → 0.779</td><td class="num">0.742 → 0.710</td><td class="num">0.590 → 0.578</td></tr>
+            <tr><td>Attacker <i>ρ</i>, undefended</td><td class="num leak">1.00*</td><td class="num leak">0.85*</td><td class="num leak">0.93*</td><td class="num leak">0.84*</td><td class="num leak">0.99*</td></tr>
+            <tr><td>Attacker <i>ρ</i>, SANE</td><td class="num hid">−0.65</td><td class="num hid">0.42</td><td class="num hid">−0.24</td><td class="num hid">0.43</td><td class="num hid">0.18</td></tr>
+            <tr><td>Null band of <i>ρ</i></td><td class="num">[−0.87, 0.55]</td><td class="num">[−0.83, 0.65]</td><td class="num">[−0.72, 0.51]</td><td class="num">[−0.73, 0.59]</td><td class="num">[−0.45, 0.38]</td></tr>
+            <tr><td>Trait Leakage Index, undefended <span class="arrow">→</span> SANE</td><td class="num">0.311 → 0.002</td><td class="num">0.272 → 0.006</td><td class="num">0.238 → 0.005</td><td class="num">0.297 → 0.005</td><td class="num">0.432 → 0.007</td></tr>
+            <tr><td>SANE runtime, whole dataset</td><td class="num">5.9 s</td><td class="num">1.7 s</td><td class="num">4.0 s</td><td class="num">6.2 s</td><td class="num">47.8 s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="t-note">CSP+LDA = common spatial patterns with linear discriminant analysis. <i>ρ</i> = Spearman correlation between each subject’s true and estimated theta/beta ratio, * = significant at <i>p</i> &lt; 0.05. The null band is the 95% range of <i>ρ</i> on releases without biomarker information (1,000 simulations), and every SANE value lies inside it.</p>
+    </div>
+
+    <div class="table-block">
+      <div class="table-wrap">
+        <table>
+          <caption>Comparison with other defenses (accuracy / attacker <i>ρ</i>)</caption>
+          <thead><tr><th scope="col">Defense</th><th scope="col">BCI IV-2a</th><th scope="col">BCI IV-2b</th><th scope="col">Steyrl</th><th scope="col">Faller</th><th scope="col">PhysioNet</th></tr></thead>
+          <tbody>
+            <tr><td>None</td><td class="num">0.606 / <span class="leak">1.00*</span></td><td class="num">0.689 / <span class="leak">0.85*</span></td><td class="num">0.642 / <span class="leak">0.93*</span></td><td class="num">0.634 / <span class="leak">0.84*</span></td><td class="num">0.539 / <span class="leak">0.99*</span></td></tr>
+            <tr><td>Added noise (<i>σ</i> = 1)</td><td class="num">0.554 / <span class="leak">0.98*</span></td><td class="num">0.571 / <span class="leak">0.85*</span></td><td class="num">0.530 / <span class="leak">0.91*</span></td><td class="num">0.512 / <span class="leak">0.85*</span></td><td class="num">0.513 / <span class="leak">0.99*</span></td></tr>
+            <tr><td>Differential privacy, <i>ε</i> = 4</td><td class="num">0.538 / <span class="leak">0.97*</span></td><td class="num">0.500 / <span class="leak">0.88*</span></td><td class="num">0.511 / <span class="leak">0.64*</span></td><td class="num">0.491 / 0.22</td><td class="num">0.469 / <span class="leak">0.85*</span></td></tr>
+            <tr><td>Differential privacy, <i>ε</i> = 1</td><td class="num">0.531 / <span class="leak">0.80*</span></td><td class="num">0.500 / −0.53</td><td class="num">0.504 / −0.44</td><td class="num">0.484 / −0.03</td><td class="num">0.471 / 0.07</td></tr>
+            <tr><td>Domain-adversarial neural network (DANN)</td><td class="num">0.508 / <span class="leak">0.97*</span></td><td class="num">0.685 / <span class="leak">0.80*</span></td><td class="num">0.560 / <span class="leak">0.80*</span></td><td class="num">0.571 / <span class="leak">0.92*</span></td><td class="num">0.478 / <span class="leak">0.91*</span></td></tr>
+            <tr><td>Variational information bottleneck (VIB)</td><td class="num">0.520 / <span class="leak">0.97*</span></td><td class="num">0.687 / <span class="leak">0.87*</span></td><td class="num">0.610 / <span class="leak">0.91*</span></td><td class="num">0.600 / <span class="leak">0.86*</span></td><td class="num">0.528 / <span class="leak">0.99*</span></td></tr>
+            <tr class="sane-row"><td>SANE</td><td class="num">0.700 / −0.65</td><td class="num">0.672 / 0.42</td><td class="num">0.645 / −0.24</td><td class="num">0.620 / 0.43</td><td class="num">0.560 / 0.18</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="t-note">Each cell gives the feature-level accuracy and the attacker’s <i>ρ</i>. * = <i>ρ</i> significant at <i>p</i> &lt; 0.05, so the biomarker can still be recovered. SANE is the only defense without a significant <i>ρ</i> on any dataset. Differential privacy at <i>ε</i> = 1 hid the biomarker on four datasets, but with accuracy near chance.</p>
+    </div>
+  </section>
+
+  <!-- ================================================================ limits -->
+  <section id="limits">
+    <div class="sec-head">
+      <h2>Limits</h2>
+      <p>What the results do not show, as reported in the paper.</p>
+    </div>
+    <ul class="limits">
+      <li><b>Clinical data needs more work.</b> SANE defeated a clinical detector trained on undefended data. A detector retrained on SANE output from the same cohort still recovered part of the label, with an AUC of 0.862 on MDD1 and 0.744 on ADHD2. The residual lies in the spectral shape inside each band and in the variability across windows.</li>
+      <li><b>The Trait Leakage Index is not a certificate.</b> It covers only second-order structure, so a release with an index near zero can still carry subject information elsewhere, such as cross-frequency coupling.</li>
+      <li><b>No formal guarantee by itself.</b> DP-SANE adds the Gaussian mechanism on top of SANE, but at the noise levels tested the accuracy fell close to chance.</li>
+      <li><b>Batch releases.</b> SANE needs the statistics of each subject, so it suits a dataset released as a whole. SANE Studio neutralizes biomarkers, but it does not anonymize a recording completely.</li>
+    </ul>
+  </section>
+
+  <!-- ================================================================ cite -->
+  <section id="cite">
+    <div class="sec-head">
+      <h2>Citation</h2>
+      <p>If you use SANE or SANE Studio, please cite the paper.</p>
+    </div>
+    <div class="bib">
+      <button class="btn btn-sm copy" id="copyBib" type="button">Copy</button>
+<pre id="bibtex">@misc{chowdhury2026sane,
+  author       = {Chowdhury, Md. Tahmid Ashraf},
+  title        = {{SANE}: Spectral Attribute Neutralization for {EEG}},
+  year         = {2026},
+  howpublished = {\url{https://github.com/tahmidashraf/sane-studio}},
+  note         = {Paper and SANE Studio software}
+}</pre>
+    </div>
+  </section>
+
 </main>
 
-<footer class="site">
-  <span>SANE Studio · Spectral Attribute Neutralization for EEG</span>
-  <span>SANE neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool.</span>
+<footer>
+  <div class="wrap">
+    <span>© 2026 <a href="https://tahmidashraf.github.io/">Md. Tahmid Ashraf Chowdhury</a>. Code under the MIT license.</span>
+    <span>Figures and numbers come from the paper.</span>
+  </div>
 </footer>
-<div class="toast" id="toast" hidden></div>
 
-<script type="module" src="js/app.js"></script>
+<script>
+(function () {
+  /* ---------------------------------------------------- figure tabs */
+  var figs = [
+    { id: "adaptive", tab: "Adaptive attacker", src: "fig_adaptive_scatter", w: 2200, h: 1136,
+      alt: "Adaptive attacker on the five motor BCI datasets, before and after SANE",
+      cap: "<b>Adaptive attacker.</b> Each held-out subject’s true theta/beta ratio against the attacker’s estimate, before SANE (a–e) and after (f–j). Before SANE the attacker ranked subjects almost perfectly. After SANE every <i>ρ</i> lies inside the null band of an attacker with no biomarker information (k–o)." },
+    { id: "probe", tab: "Clinical probing", src: "fig_probe_radar", w: 2200, h: 971,
+      alt: "Budgeted probing attack on six clinical cohorts and four merged pools",
+      cap: "<b>Budgeted probing attack on clinical cohorts.</b> A reinforcement-learning policy reads a few channels and predicts the diagnosis. A learned policy beat the random prober in four of six cohorts, for example 0.942 against 0.776 on ADHD1." },
+    { id: "pu", tab: "Defenses compared", src: "fig_privacy_utility", w: 2200, h: 875,
+      alt: "Privacy-utility map of SANE and the baseline defenses",
+      cap: "<b>Privacy–utility map.</b> Each defense is placed by its attacker <i>ρ</i> and its accuracy, with the null band in green. SANE (star) is the only defense inside the null band on all five datasets. Panels (f)–(j) add the Gaussian mechanism to SANE (DP-SANE)." },
+    { id: "time", tab: "Over session time", src: "fig_timeline", w: 2200, h: 864,
+      alt: "Biomarker of each subject over session time before and after SANE",
+      cap: "<b>Biomarker over session time.</b> Before SANE the subjects kept separate levels from start to end of a session. Run on each fifth of a session, the attacker recovered the biomarker in 24 of 25 parts before SANE, and in none after." },
+    { id: "signal", tab: "One channel", src: "fig_single_channel", w: 2200, h: 1214,
+      alt: "One EEG channel before and after SANE for the most deviant subject of each dataset",
+      cap: "<b>One channel before (black) and after SANE (orange).</b> Before SANE the most deviant subject’s spectrum sat 3.3 to 7.9 dB from the population mean in its most deviant band, and after SANE at most 1.4 dB." },
+    { id: "integrity", tab: "Data integrity", src: "fig_integrity", w: 2200, h: 968,
+      alt: "Data integrity after SANE",
+      cap: "<b>Data integrity.</b> SANE shrank the spread of the subject means by a factor of 8 to 15, while each trial’s deviation from its subject mean still correlated with the original at <i>r</i> = 0.48 to 0.84." },
+    { id: "ablation", tab: "Ablation", src: "fig_ablation", w: 2200, h: 1202,
+      alt: "Ablation of the two SANE operators",
+      cap: "<b>Each operator alone.</b> Spectral standardization alone left the spatial fingerprint, and spatial whitening alone left the attacker just significant on PhysioNet. Only both together gave a non-significant <i>ρ</i> on every dataset." },
+    { id: "alpha", tab: "Strength sweep", src: "fig_alpha_sweep", w: 2200, h: 1045,
+      alt: "Strength sweep of SANE from alpha 0 to 1",
+      cap: "<b>Strength sweep.</b> From <i>α</i> = 0.75 on, every <i>ρ</i> lay inside the null band, and accuracy moved by at most 0.034 across the sweep, so <i>α</i> = 1 is the default." },
+    { id: "tli", tab: "Leakage index", src: "fig_tli_density", w: 2200, h: 870,
+      alt: "Identifiability and task relevance of every feature before and after SANE",
+      cap: "<b>Factors of the Trait Leakage Index.</b> After SANE, the identifiability <i>ι</i> of every feature moved two orders of magnitude lower, while the task relevance <i>τ</i> was unchanged." }
+  ];
+  var tabs = document.getElementById("figTabs");
+  var img = document.getElementById("figImg"), link = document.getElementById("figLink"), cap = document.getElementById("figCap");
+  var panel = document.getElementById("figPanel");
+  var buttons = figs.map(function (f, i) {
+    var b = document.createElement("button");
+    b.type = "button"; b.role = "tab"; b.id = "tab-" + f.id; b.textContent = f.tab;
+    b.setAttribute("aria-controls", "figPanel");
+    b.addEventListener("click", function () { show(i, false); });
+    b.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        show((i + (e.key === "ArrowRight" ? 1 : figs.length - 1)) % figs.length, true);
+      }
+    });
+    tabs.appendChild(b);
+    return b;
+  });
+  function show(i, focus) {
+    var f = figs[i], url = "static/img/" + f.src + ".webp";
+    img.src = url; img.width = f.w; img.height = f.h; img.alt = f.alt;
+    link.href = url; cap.innerHTML = f.cap;
+    buttons.forEach(function (b, j) {
+      b.setAttribute("aria-selected", j === i ? "true" : "false");
+      b.tabIndex = j === i ? 0 : -1;
+    });
+    panel.setAttribute("aria-labelledby", buttons[i].id);
+    if (focus) { buttons[i].focus(); buttons[i].scrollIntoView({ block: "nearest", inline: "nearest" }); }
+  }
+  show(0, false);
+
+  /* ---------------------------------------------------- paper links */
+  var paperUrl = (window.SANE_PAPER_URL || "").trim();
+  document.querySelectorAll("a.paper-link").forEach(function (a) {
+    if (paperUrl) {
+      a.href = paperUrl; a.target = "_blank"; a.rel = "noopener";
+    } else {
+      a.removeAttribute("href"); a.classList.add("soon");
+      a.setAttribute("aria-disabled", "true"); a.title = "The paper link will be added soon";
+      var go = a.querySelector(".go"); if (go) go.textContent = "Link coming soon";
+    }
+  });
+
+  /* ---------------------------------------------------- copy BibTeX */
+  var copyBtn = document.getElementById("copyBib");
+  copyBtn.addEventListener("click", function () {
+    var text = document.getElementById("bibtex").textContent;
+    function done() { copyBtn.textContent = "Copied"; setTimeout(function () { copyBtn.textContent = "Copy"; }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else { fallback(); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(document.getElementById("bibtex"));
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { document.execCommand("copy"); done(); } catch (e) { copyBtn.textContent = "Press Ctrl+C"; }
+    }
+  });
+
+  /* ---------------------------------------------------- theme toggle, shared with SANE Studio */
+  var root = document.documentElement;
+  document.getElementById("themeBtn").addEventListener("click", function () {
+    var dark = root.dataset.theme ? root.dataset.theme === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("sane-theme", root.dataset.theme); } catch (e) {}
+  });
+})();
+</script>
 </body>
 </html>

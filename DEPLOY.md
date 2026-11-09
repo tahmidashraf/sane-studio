@@ -39,7 +39,8 @@ The first push opens a GitHub sign-in window; sign in there. The upload is about
 
 ## 4. Check that it works
 
-1. Open the link. Under the drop zone a status line says *Preparing the SANE engine*; the first
+1. Open the link. The project page opens; click **Open SANE Studio** (the app is at
+   `.../sane-studio/studio.html`). Under the drop zone a status line says *Preparing the SANE engine*; the first
    visit downloads about 50 MB, then it turns green: *Ready · runs in this browser*.
 2. Click a sample dataset, then **Neutralize**, and wait for the results screen.
 3. Click **Download** and open the file. Later visits start in a few seconds from the cache.
