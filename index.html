@@ -730,6 +730,19 @@ footer a { color: var(--text-2); }
     }
   });
 
+  /* ---------------------------------------------------- double-blind review mirror: no author names or personal links */
+  if (location.hostname === "anonymous.4open.science") {
+    var repo = location.origin + "/r/" + location.pathname.split("/")[2];
+    document.querySelectorAll(".authors").forEach(function (e) { e.textContent = "Anonymous authors, under double-blind review"; });
+    document.querySelectorAll('a[href*="github."]').forEach(function (a) { a.href = repo; });
+    var foot = document.querySelector("footer .wrap span");
+    if (foot) foot.textContent = "© 2026 The authors. Code under the MIT license.";
+    var bib = document.getElementById("bibtex");
+    bib.textContent = bib.textContent.replace(/@misc\{[^,]*,/, "@misc{anonymous2026sane,")
+      .replace(/author(\s*)=\s*\{.*\},/, "author$1= {Anonymous},")
+      .replace(/\\url\{[^}]*\}/, "\\url{" + repo + "}");
+  }
+
   /* ---------------------------------------------------- theme toggle, shared with SANE Studio */
   var root = document.documentElement;
   document.getElementById("themeBtn").addEventListener("click", function () {
