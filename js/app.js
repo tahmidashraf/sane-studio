@@ -202,7 +202,7 @@ function refHint() {
   $("spatialField").style.opacity = cohort || +$("spAlpha").value === 0 ? 0.5 : 1;
 }
 // Spatial alignment defaults to automatic: full when aligning to a measured cohort,
-// off against the generic head model, where it would rebuild channels from neighbours.
+// off against the generic head model, where it would reconstruct channels from neighbours.
 function spatialAuto(cohort) {
   const s = $("spAlpha");
   $("spAuto").hidden = !state.spTouched;
@@ -447,7 +447,7 @@ function renderReport() {
       <td class="num" title="${esc(Object.entries(r.dynamics_bands || {}).map(([b, v]) => `${b} ${fmtNum(v, 3)}`).join(" · "))}">${fmtNum(r.dynamics_mean)}</td>
       <td class="num">${fmtNum(r.fidelity_mean)}</td><td class="num">${r.events}</td>
       <td class="mono" style="font-size:12px">${r.outputs.map((o) => esc(o).replace(/_/g, "_<wbr>")).join("<br>")}</td></tr>`).join("") + `</tbody></table></div>`;
-  html += `<div class="scope"><b>Scope.</b> SANE neutralizes subject-level spectral and spatial biomarkers, the per-channel band-power profile and the per-band channel covariance. Trial-level dynamics, events and auxiliary channels are preserved. Windows with saturation, spikes or flat signal are excluded from fitting (“Fit windows”) and from the fidelity scores. “Dynamics kept” is the within-band correlation of each channel with its input; it ignores the intended rescaling of bands and drops only when channels are remixed by spatial alignment. SANE is not a complete anonymization method: individual traits outside these statistics, such as alpha peak frequency, can remain.</div>
+  html += `<div class="scope"><b>Scope.</b> SANE neutralizes subject-level spectral and spatial biomarkers, the per-channel band-power profile and the per-band channel covariance. Trial-level dynamics, events and auxiliary channels are preserved. Windows with saturation, spikes or flat signal are excluded from fitting (“Fit windows”) and from the fidelity scores. “Dynamics kept” is the within-band correlation of each channel with its input; it ignores the intended rescaling of bands and drops only when channels are remixed by spatial alignment. SANE is not a complete anonymization method: individual traits outside these statistics, such as alpha peak frequency, can remain. SANE Studio runs SANE in standard mode. A detector retrained with diagnosis labels on the released cohort can still find part of a diagnosis, so for clinical releases the paper recommends secure mode, which works on whole trials and is not part of SANE Studio.</div>
     <div style="margin-top:14px"><button class="btn" id="exportReport">Export report (JSON)</button></div>`;
   $("reportBody").innerHTML = html;
   $("exportReport").onclick = () => {

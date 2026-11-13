@@ -181,7 +181,7 @@
         <tr><td></td><td>File format, sampling rate, channel names, channel order and recording length</td></tr>
       </tbody>
     </table></div>
-    <div class="callout warn"><b>What SANE Studio is not</b>SANE Studio neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool. Individual traits outside those statistics, such as the exact frequency of a person's alpha peak, can remain in the data. Treat processed files as de-identified research data, not as anonymous data.</div>
+    <div class="callout warn"><b>What SANE Studio is not</b>SANE Studio neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool. Individual traits outside those statistics, such as the exact frequency of a person's alpha peak, can remain in the data. Treat processed files as de-identified research data, not as anonymous data. SANE Studio runs SANE in standard mode. A detector retrained with diagnosis labels on the released cohort can still find part of a diagnosis, so for clinical releases the paper recommends secure mode, which works on whole trials and is not part of SANE Studio.</div>
 
     <!-- ===================================================== 2 -->
     <h2 id="start"><span class="num">2</span>Starting SANE Studio</h2>
@@ -391,7 +391,7 @@
         <p>By default it is set to <strong>Auto</strong>, shown as <code>Auto · full</code> or <code>Auto · off</code>:</p>
         <ul>
           <li><strong>Auto · full</strong> when recordings are aligned to your own cohort. The cohort is a measured reference, and in our tests the output kept a brain-dynamics score of 0.92 to 0.99. In this mode spatial alignment follows the strength: at strength 0.5 it is also 0.5.</li>
-          <li><strong>Auto · off</strong> when recordings are aligned to the built-in normative profile. The only spatial target there is a generic head model, and aligning to it rebuilds each channel largely from its neighbours, which costs much more of the signal.</li>
+          <li><strong>Auto · off</strong> when recordings are aligned to the built-in normative profile. The only spatial target there is a generic head model, and aligning to it reconstructs each channel largely from its neighbours, which costs much more of the signal.</li>
         </ul>
       </div>
     </div>
@@ -692,7 +692,7 @@
       <li><strong>Personal header fields are stripped by default</strong> (<a href="#settings">section 8</a>).</li>
       <li><strong>When you run SANE Studio on your own computer, your data never leaves it.</strong> Working files go to the folder set by <code>SANE_DATA_DIR</code> (<a href="#admin">section 17</a>).</li>
     </ul>
-    <div class="callout warn"><b>Limits</b>SANE Studio removes subject-level spectral and spatial biomarkers. It does not remove every individual trait. File names, the folder structure of a dataset, and information inside events (for example a label containing a name) are not changed. Check these yourself before sharing data.</div>
+    <div class="callout warn"><b>Limits</b>SANE Studio removes subject-level spectral and spatial biomarkers. It does not remove every individual trait. File names, the folder structure of a dataset, and information inside events (for example a label containing a name) are not changed. Check these yourself before sharing data. SANE Studio runs SANE in standard mode. A detector retrained with diagnosis labels on the released cohort can still find part of a diagnosis, so for clinical releases the paper recommends secure mode, which works on whole trials and is not part of SANE Studio.</div>
 
     <!-- ===================================================== 15 -->
     <h2 id="messages"><span class="num">15</span>Messages and what to do</h2>
@@ -848,7 +848,7 @@ python tests/test_downloaded.py D:/sane_testdata http://localhost:8000</pre>
 
 <footer class="site">
   <span>SANE Studio · Spectral Attribute Neutralization for EEG</span>
-  <span>SANE neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool.</span>
+  <span>SANE Studio runs SANE in standard mode, which neutralizes subject-level spectral and spatial biomarkers. It is not a complete anonymization tool.</span>
 </footer>
 <script>
   document.getElementById("themeBtn").addEventListener("click", () => {
@@ -856,6 +856,16 @@ python tests/test_downloaded.py D:/sane_testdata http://localhost:8000</pre>
     document.documentElement.dataset.theme = dark ? "light" : "dark";
     try { localStorage.setItem("sane-theme", document.documentElement.dataset.theme); } catch (_) { /* private mode */ }
   });
+  /* On the double-blind review mirror SANE Studio cannot run (sandboxed pages), so the button says so. */
+  if (location.hostname === "anonymous.4open.science") {
+    document.querySelectorAll('a.btn[href="studio.html"]').forEach(function (a) {
+      a.textContent = "Live demo after review";
+      a.removeAttribute("href");
+      a.setAttribute("aria-disabled", "true");
+      a.style.opacity = ".55";
+      a.style.pointerEvents = "none";
+    });
+  }
 </script>
 </body>
 </html>

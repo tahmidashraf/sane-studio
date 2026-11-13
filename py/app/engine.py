@@ -258,7 +258,7 @@ def build_operators(units, bands, alpha, reference="auto", spatial_model="kernel
     alpha sets spectral neutralization; spatial_alpha sets how far the spatial covariance
     is moved, so channel-specific analyses can keep more of it. None means automatic:
     alpha for units aligned to a cohort (a measured reference) and 0 for normative units,
-    where the only spatial target is a generic head model and alignment rebuilds each
+    where the only spatial target is a generic head model and alignment reconstructs each
     channel largely from its neighbours.
     """
     nb = len(bands)
